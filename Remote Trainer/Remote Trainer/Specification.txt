@@ -1,0 +1,4 @@
+﻿Start workout -> Workout page with 3 tabs:
+	1. General overview of workout with list of series
+	2. Detail of specific Serie -> list of Reps
+	3. Specific Repetition
