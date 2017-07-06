@@ -65,10 +65,14 @@
   <ItemGroup>
     <Content Include="app.css" />
     <Content Include="index.html" />
+    <Content Include="Libraries\jquery-3.2.1.js" />
+    <Content Include="Libraries\knockout-3.4.2.js" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="Libraries\jquery.d.ts" />
+    <TypeScriptCompile Include="Libraries\knockout.d.ts" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
