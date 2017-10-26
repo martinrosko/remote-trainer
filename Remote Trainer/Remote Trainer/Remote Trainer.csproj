@@ -64,6 +64,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="app.css" />
+    <Content Include="Images\done.png" />
+    <Content Include="Images\play.png" />
+    <Content Include="Images\stop.png" />
     <Content Include="index.html" />
     <Content Include="Libraries\jquery-3.2.1.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
