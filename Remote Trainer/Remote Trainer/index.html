@@ -3,129 +3,133 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="X-Frame-Options" content="allow" />
+    <meta http-equiv="cache-control" content="max-age=0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="apple-mobile-web-app-capable" content="yes">    
+
     <title>Remote Trainer</title>
+
     <link rel="stylesheet" href="app.css" type="text/css" />
+
+    <script src="Libraries/jquery-3.2.1.js"></script>
+    <script src="Libraries/knockout-3.4.2.js"></script>
+    <script src="UI/koCustomBindings.js"></script>
+    <script src="Data/category.js"></script>
+    <script src="Data/exercise.js"></script>
+    <script src="Data/serie.js"></script>
+    <script src="Data/set.js"></script>
+    <script src="Data/workout.js"></script>
     <script src="app.js"></script>
 </head>
 <body style="background: silver">
-    <!--Workout 20% Done&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00:43:14 (00:14:23)<br />
-    Estimated finish time: 12:30
-    <h1>Prsia a Biceps</h1>
-    <i>Current:</i>
-    Rest <a href="">Continue (Peck-deck)</a><br />
-    <br />
-    <h2>Series</h2>
-    <ol>
-        <li>
-            Tlaky na stroji 3x70<br />
-            Brusaky 3x40<br />
-            <b>Done (Easy)</b> - 10:30<br />
-            <br />
-        </li>
-        <li>
-            Tlak na sikmej lavicke dolehlavou 3x50<br />
-            <b>Done (Hard)</b> - 08:15<br />
-            <br />
-        </li>
-        <li>
-            Peck-deck 3x50<br />
-            Zdvihanie noh do sviecky 3x15<br />
-            <a href="">Start</a> | <a href="">Move down</a><br />
-            <br />
-        </li>
-        <li>
-            Kladky zhore 3x10<br />
-            <a href="">Move up</a> | <a href="">Move Down</a> | <a href="">Skip</a><br />
-            <br />
-        </li>
-        <li>
-            Pullover 3 x 22<br />
-            Plank Up/Down 3 x 16<br />
-            <a href="">Move up</a> | <a href="">Skip</a><br />
-            <br />
-        </li>
-        <li>
-            <i>Kliky</i><br />
-            <b>Skipped</b> <a href="">Activate</a><br />
-            <br />
-        </li>
-    </ol>-->
+    <div id="app_root" data-bind="app: $data"></div>
 
-    <div class="page" style="width: 480px; height: 800px; background: #eeeeee">
-         <div class="header" style="width: 100%; background: #333333; color: white; padding: 3px; box-sizing: border-box">
-             00:43:14 (20% Done)
-             End at 12:30 (in 15minute(s))
-         </div>
-         <div class="content">
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px; align-items: center">
-                 <div class="imgRepStatus" style="height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0; padding: 3px; background: #ccf8e8"><span style="font-size: 42px; font-weight: bold">40</span><span style="font-size: 10px">sec</span></div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1; height: 100%; font-size: 18px; font-weight: bold">
-                    Tlaky na stroji
-                 </div>
-                 <div class="imgRepWeight" style="border-right: solid 1px silver; width: 75px; height: 100%; text-align: center; flex-shrink: 0"><span style="font-size: 42px; font-weight: bold">70</span><span style="font-size: 10px">kg</span></div>
-                 <div class="imgRepAmount" style="width: 75px; text-align: center; flex-shrink: 0"><span style="font-size: 42px; font-weight: bold">10</span><span style="font-size: 10px">reps.</span></div>
-             </div>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            RemoteTrainer.Program.instance.runApplication();
+        });
+    </script>
 
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px">
-                 <div class="imgRepStatus" style="background-position: 50% 50%; background-image: url('Images/done.png'); background-size: contain; background-repeat: no-repeat; height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0"></div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1">
-                     <div style="font-size: 18px; font-weight: bold">Brusaky</div>
-                     <div style="font-size: 12px">Duration: <b>72</b> seconds</div>
-                     <div style="font-size: 12px">Effort: <b>Medium</b></div>
-                 </div>
-                 <div class="imgRepAmount" style="width: 75px; height: 100%; text-align: center; flex-shrink: 0"><span style="font-size: 42px; font-weight: bold">40</span><span style="font-size: 10px">reps.</span></div>
-             </div>
+    <script id="tmplApplication" type="text/html">
+        <!-- ko template: { name: 'tmplSet', data: set } --><!-- /ko -->
+    </script>
 
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px">
-                 <div class="imgRepStatus" style="background-position: 50% 50%; background-image: url('Images/done.png'); background-size: contain; background-repeat: no-repeat; height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0"></div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1">
-                     <div style="font-size: 18px; font-weight: bold">Tlaky na stroji</div>
-                     <div style="font-size: 12px">Duration: <b>47</b> seconds</div>
-                     <div style="font-size: 12px">Effort: <b>Medium</b></div>
-                 </div>
-                 <div class="imgRepWeight" style="border-right: dotted 1px silver; width: 75px; height: 100%; text-align: center; flex-shrink: 0"><span style="font-size: 42px; font-weight: bold">70</span><span style="font-size: 10px">kg</span></div>
-                 <div class="imgRepAmount" style="width: 75px; text-align: center; flex-shrink: 0"><span style="font-size: 42px; font-weight: bold">10</span><span style="font-size: 10px">reps.</span></div>
-             </div>
+    <script id="tmplSet" type="text/html">
+        <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
+            <div class="header">
+                00:43:14 (20% Done)
+                End at 12:30 (in 15minute(s))
+            </div>
+            <div style="width: 100%; text-align: center; color: black; display: flex; background: #333333; padding-top: 5px">
+                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Workout</h2></div>
+                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px #eeeeee; background: #eeeeee"><h2>Set</h2></div>
+                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Serie</h2></div>
+            </div>
+            <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+                Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+            </div>
+            <div class="set">
+                <!-- ko foreach: series -->
+                    <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
+                <!-- /ko -->
+            </div>
+            <!-- ko if: series()[series().length - 1].uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
+            <div style="width: 100%; text-align: center; background: #333333; padding: 10px 5px; color: white; border-bottom: solid 1px black" data-bind="click: onContinueClicked">
+                <h2>Continue</h2>
+            </div>
+            <!-- /ko -->
+        </div>
+    </script>
 
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px">
-                 <div class="imgRepStatus" style="background-position: 50% 50%; background-image: url('Images/stop.png'); background-size: contain; background-repeat: no-repeat; height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0"></div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1">
-                     <div style="font-size: 18px; font-weight: bold">Brusaky</div>
-                     <div style="font-size: 12px">Running: <b>15</b> seconds</div>
-                 </div>
-                 <div class="imgRepAmount" style="width: 75px; height: 100%; text-align: center; flex-shrink: 0; color: silver"><span style="font-size: 42px; font-weight: bold">40</span><span style="font-size: 10px">reps.</span></div>
-             </div>
+    <script id="tmplSerie" type="text/html">
+        <div class="serieHeader" data-bind="style: { backgroundColor: exercise.category.colorDark }">
+            <h2 data-bind="text: exercise.name"></h2>
+        </div>
+        <div class="serie">
+            <div class="optionPanel" data-bind="css: { animateOpenOptions: uiOptionsPanelState() === RemoteTrainer.Data.OptionPanelState.Opening, animateCloseOption: uiOptionsPanelState() === RemoteTrainer.Data.OptionPanelState.Closing}">
+                <!-- ko if: uiOptionsContentTemplate() -->
+                    <!-- ko template: { name: uiOptionsContentTemplate } --><!-- /ko -->
+                <!-- /ko -->
+                <div class="cell button imgStatus" style="width: 55px" data-bind="style: { backgroundColor: exercise.category.colorLight, backgroundImage: 'url(\'Images/serieStatus' + RemoteTrainer.Data.SerieStatus[uiStatus()] + '.png\')' }, click: onStatusClicked"></div>
+            </div>
+            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
+            <div class="cell button imgStatus" style="width: 55px" data-bind="style: { backgroundColor: exercise.category.colorLight, backgroundImage: 'url(\'Images/serieStatus' + RemoteTrainer.Data.SerieStatus[uiStatus()] + '.png\')' }, click: onStatusClicked"></div>
+            <!-- /ko -->
+            <div class="info" data-bind="style: { backgroundColor: 'white' }">
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
+                <div>
+                    Duration: <span class="highlight" data-bind="text: uiDuration"/><span class="annotation"> sec</span><br />
+                    Difficulty: <span class="highlight" style="cursor: pointer" data-bind="text: uiDifficulty, click: onStatusClicked"/>
+                </div>
+                <!-- /ko -->
+            </div>
+            <!-- ko if: uiAmount() > 0 -->
+            <div class="cell button" style="border-right: dotted 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight }">
+                <span class="bigDigit" data-bind="text: uiAmount" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
+            </div>
+            <!-- /ko -->
+            <div class="cell button" data-bind="style: { backgroundColor: exercise.category.colorLight }">
+                <span class="bigDigit" data-bind="text: uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
+            </div>
+        </div>
+        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+            <!-- ko if: parent.breaks[order]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
+        </div>
+    </script>
 
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px">
-                 <div class="imgRepStatus" style="height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0">Pending</div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1">
-                     <div style="font-size: 18px; font-weight: bold">Tlaky na stroji</div>
-                 </div>
-                 <div class="imgRepWeight" style="border-right: solid 1px silver; width: 75px; height: 100%; text-align: center; flex-shrink: 0; color: silver"><span style="font-size: 42px; font-weight: bold">70</span><span style="font-size: 10px">kg</span></div>
-                 <div class="imgRepAmount" style="width: 75px; text-align: center; flex-shrink: 0; color: silver"><span style="font-size: 42px; font-weight: bold">10</span><span style="font-size: 10px">reps.</span></div>
-             </div>
+    <script id="tmplOptionsRunningSerie" type="text/html">
+        <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
+            <span class="bigDigit" data-bind="text: uiDuration" /><span class="annotation"> sec</span>
+        </div>
+    </script>
 
-             <div class="listItem" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; display: flex; flex-direction: row; height: 75px">
-                 <div class="imgRepStatus" style="height: 100%; width: 75px; border-right: dotted 1px silver; flex-shrink: 0">Pending</div>
-                 <div class="repInfo" style="padding: 5px; border-right: solid 1px black; flex: 1">
-                     <div style="font-size: 18px; font-weight: bold">Brusaky</div>
-                 </div>
-                 <div class="imgRepAmount" style="width: 75px; height: 100%; text-align: center; flex-shrink: 0; color: silver"><span style="font-size: 42px; font-weight: bold">40</span><span style="font-size: 10px">reps.</span></div>
-             </div>
-         </div>
-    </div>
+    <script id="tmplOptionsSerieComplete" type="text/html">
+        <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black; display: flex; flex-direction: row">
+            <div class="difficultyButton"><input type="radio" value="Very Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Very Easy</div>
+            <div class="difficultyButton"><input type="radio" value="Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Easy</div>
+            <div class="difficultyButton"><input type="radio" value="Medium" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Medium</div>
+            <div class="difficultyButton"><input type="radio" value="Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Hard</div>
+            <div class="difficultyButton"><input type="radio" value="Very Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Very Hard</div>           
+        </div>
+    </script>
 
-    <!--Workout 20% Done&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00:43:14 (00:14:23)<br />
-    Estimated finish time: 12:30
-    <h1>Serie 2</h1>
-    <i>Current:</i>
-    Brusaky <a href="">Complete</a><select><option>Easy</option><option>Medium</option><option>Hard</option></select><br />
-    <br />-->
+    <!--style="background: #C9FFDA"
+    style="background: #D9FFEA"
+    style="background: #FBFFD6"
+    style="background: #FFD9C6"
+    style="background: #FFB7AA"-->
 
-    <!--Workout 20% Done&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;00:43:14 (00:14:23)<br />
-    Estimated finish time: 12:30
-    <h1>Brusaky</h1>
-    <span style="font-size: 6em">00:43</span><br />
-    <a href="">Complete</a><select><option>Easy</option><option>Medium</option><option>Hard</option></select><br />-->
+    <script id="tmplOptionsSerieSettings" type="text/html">
+        <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
+            Nastavenia pre konkretnu serie: vynechat, zamenit, posunut na neskor...
+        </div>
+    </script>
+
 </body>
 </html>
