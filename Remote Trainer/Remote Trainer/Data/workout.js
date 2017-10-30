@@ -5,6 +5,11 @@ var RemoteTrainer;
         var WorkoutTemplate = (function () {
             function WorkoutTemplate() {
             }
+            WorkoutTemplate.prototype.addSet = function (set) {
+                this.setTemplates.push(set);
+                set.parent = this;
+                set.order = this.setTemplates.length;
+            };
             return WorkoutTemplate;
         }());
         Data.WorkoutTemplate = WorkoutTemplate;

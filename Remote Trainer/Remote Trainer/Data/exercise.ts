@@ -10,7 +10,8 @@
     export enum UnitOfAmount {
         kg,
         kmh,
-        level
+        level,
+        none
     }
 
     export enum UnitOfRepetitions {

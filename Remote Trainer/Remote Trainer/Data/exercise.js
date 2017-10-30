@@ -13,6 +13,7 @@ var RemoteTrainer;
             UnitOfAmount[UnitOfAmount["kg"] = 0] = "kg";
             UnitOfAmount[UnitOfAmount["kmh"] = 1] = "kmh";
             UnitOfAmount[UnitOfAmount["level"] = 2] = "level";
+            UnitOfAmount[UnitOfAmount["none"] = 3] = "none";
         })(UnitOfAmount = Data.UnitOfAmount || (Data.UnitOfAmount = {}));
         var UnitOfRepetitions;
         (function (UnitOfRepetitions) {

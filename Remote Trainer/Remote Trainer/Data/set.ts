@@ -2,6 +2,7 @@
     export class SetTemplate {
         public order: number;
         public serieTemplates: SerieTemplate[];
+        public parent: WorkoutTemplate;
 
         public addSerie(serie: SerieTemplate): void {
             this.serieTemplates.push(serie);
