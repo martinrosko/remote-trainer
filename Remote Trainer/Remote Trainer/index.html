@@ -21,6 +21,9 @@
     <script src="Libraries/knockout-3.4.2.js"></script>
     <script src="Libraries/moment-2.19.1.min.js"></script>
     <script src="UI/koCustomBindings.js"></script>
+    <script src="Common/common.js"></script>
+    <script src="Common/exception.js"></script>
+    <script src="Common/event.js"></script>
     <script src="Data/category.js"></script>
     <script src="Data/exercise.js"></script>
     <script src="Data/serie.js"></script>
@@ -38,7 +41,16 @@
     </script>
 
     <script id="tmplApplication" type="text/html">
-        <!-- ko template: { name: 'tmplWorkoutPage', data: workout } --><!-- /ko -->
+        <div class="page" style="width: 480px; height: 800px; background: #eeeeee">
+            <!-- ko template: { name: 'tmplWorkoutPage', data: workout } --><!-- /ko -->
+            <br />
+            <br />
+            <!-- ko with: workout -->
+                <!-- ko if: activeSet() -->
+                    <!-- ko template: { name: 'tmplSetPage', data: activeSet } --><!-- /ko -->
+                <!-- /ko -->
+            <!-- /ko -->
+        </div>
     </script>
 
     <script id="tmplWorkoutPage" type="text/html">
@@ -60,25 +72,13 @@
         <!-- /ko -->
     </script>
 
-    <script id="tmplSet" type="text/html">
-        <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
-            <div style="width: 100%; text-align: center; color: black; display: flex; background: #333333; padding-top: 5px">
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Workout</h2></div>
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px #eeeeee; background: #eeeeee"><h2>Set</h2></div>
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Serie</h2></div>
-            </div>
+    <script id="tmplSetPage" type="text/html">
+        <div class="set">
             <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-                Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+                Break: <span class="highlight" data-bind="text: breaks[0]" /><span class="annotation"> sec</span>
             </div>
-            <div class="set">
-                <!-- ko foreach: series -->
-                    <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
-                <!-- /ko -->
-            </div>
-            <!-- ko if: series()[series().length - 1].uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-            <div style="width: 100%; text-align: center; background: #333333; padding: 10px 5px; color: white; border-bottom: solid 1px black" data-bind="click: onContinueClicked">
-                <h2>Continue</h2>
-            </div>
+            <!-- ko foreach: series -->
+                <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
             <!-- /ko -->
         </div>
     </script>
@@ -115,7 +115,7 @@
             </div>
         </div>
         <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-            <!-- ko if: parent.breaks[order]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
+            <!-- ko if: parent.breaks[order + 1]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
         </div>
     </script>
 

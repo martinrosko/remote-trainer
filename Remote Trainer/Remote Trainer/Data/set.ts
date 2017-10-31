@@ -30,13 +30,14 @@
             super();
             template.copyTo(this);
 
-            this.breaks = [];
+            this.breaks = [ko.observable(-1)];
             this.series = ko.observableArray<Serie>();
             var series = this.series();
             template.serieTemplates.forEach((serieTemplate, index) => {
                 var serie = new Serie(serieTemplate);
                 serie.parent = this;
-                serie.order = index;                
+				serie.order = index;                
+
                 series.push(serie);
 				if (index > 0) {
 					series[index - 1].next = serie;
@@ -45,13 +46,23 @@
                 this.breaks.push(ko.observable<number>(-1));
             }, this);
             this.series.valueHasMutated();
-        }
+		}
+
+		public serieStatusChanged(serie: Serie, status: SerieStatus): void {
+			var index = this.series().indexOf(serie);
+			if (status === SerieStatus.Finished) {
+				this.startBreak(index);
+				this.parent.updateCompletionStatus();
+			}
+			else if (status === SerieStatus.Running)
+				this.stopBreak(index);
+		}
 
         public startBreak(index: number): void {
-            this.breaks[index](0);
+            this.breaks[index + 1](0);
             this.m_timer = window.setInterval(function(breakStart: number) {
                 var now = Math.round(new Date().getTime() / 1000);
-                this.breaks[index](now - breakStart);
+                this.breaks[index + 1](now - breakStart);
             }.bind(this), 1000, Math.round(new Date().getTime() / 1000));
         }
 
@@ -60,7 +71,11 @@
                 window.clearInterval(this.m_timer);
                 this.m_timer = 0;
             }
-        }
+		}
+
+		public start(): void {
+			this.series()[0].activate();
+		}
 
         public onContinueClicked(): void {
             //if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {

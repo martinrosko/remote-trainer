@@ -32,7 +32,7 @@ var RemoteTrainer;
             function Set(template) {
                 var _this = _super.call(this) || this;
                 template.copyTo(_this);
-                _this.breaks = [];
+                _this.breaks = [ko.observable(-1)];
                 _this.series = ko.observableArray();
                 var series = _this.series();
                 template.serieTemplates.forEach(function (serieTemplate, index) {
@@ -49,11 +49,20 @@ var RemoteTrainer;
                 _this.series.valueHasMutated();
                 return _this;
             }
+            Set.prototype.serieStatusChanged = function (serie, status) {
+                var index = this.series().indexOf(serie);
+                if (status === Data.SerieStatus.Finished) {
+                    this.startBreak(index);
+                    this.parent.updateCompletionStatus();
+                }
+                else if (status === Data.SerieStatus.Running)
+                    this.stopBreak(index);
+            };
             Set.prototype.startBreak = function (index) {
-                this.breaks[index](0);
+                this.breaks[index + 1](0);
                 this.m_timer = window.setInterval(function (breakStart) {
                     var now = Math.round(new Date().getTime() / 1000);
-                    this.breaks[index](now - breakStart);
+                    this.breaks[index + 1](now - breakStart);
                 }.bind(this), 1000, Math.round(new Date().getTime() / 1000));
             };
             Set.prototype.stopBreak = function (index) {
@@ -61,6 +70,9 @@ var RemoteTrainer;
                     window.clearInterval(this.m_timer);
                     this.m_timer = 0;
                 }
+            };
+            Set.prototype.start = function () {
+                this.series()[0].activate();
             };
             Set.prototype.onContinueClicked = function () {
                 //if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {

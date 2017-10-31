@@ -80,9 +80,7 @@ var RemoteTrainer;
                 _this.activeSetIndex = ko.observable(-1);
                 _this.activeSetIndex.subscribe(function (value) {
                     var set = _this.sets()[value];
-                    //if (set.previous)
-                    //	set.previous.stop();
-                    //set.start();
+                    set.start();
                 });
                 _this.activeSet = ko.computed(function () {
                     var index = _this.activeSetIndex();

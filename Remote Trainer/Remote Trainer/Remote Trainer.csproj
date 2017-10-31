@@ -95,6 +95,9 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="Common\common.ts" />
+    <TypeScriptCompile Include="Common\event.ts" />
+    <TypeScriptCompile Include="Common\exception.ts" />
     <TypeScriptCompile Include="Data\category.ts" />
     <TypeScriptCompile Include="Data\exercise.ts" />
     <TypeScriptCompile Include="Data\set.ts" />

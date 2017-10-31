@@ -90,9 +90,7 @@
 			this.activeSetIndex = ko.observable<number>(-1);
 			this.activeSetIndex.subscribe((value) => {
 				var set = this.sets()[value];
-				//if (set.previous)
-				//	set.previous.stop();
-				//set.start();
+				set.start();
 			});
 
 			this.activeSet = ko.computed(() => {

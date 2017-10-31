@@ -41,6 +41,10 @@ var RemoteTrainer;
                 _this.uiReps = ko.observable(template.reps);
                 _this.uiDifficulty = ko.observable(Serie.difficulties[3]);
                 _this.uiStatus = ko.observable(SerieStatus.Queued);
+                _this.uiStatus.subscribe(function (value) {
+                    if (_this.parent)
+                        _this.parent.serieStatusChanged(_this, value);
+                }, _this);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
@@ -55,6 +59,12 @@ var RemoteTrainer;
                 });
                 return _this;
             }
+            Serie.prototype.activate = function () {
+                this.uiStatus(SerieStatus.Ready);
+            };
+            Serie.prototype.start = function () {
+                this.uiStatus(SerieStatus.Running);
+            };
             Serie.prototype.onStatusClicked = function () {
                 var _this = this;
                 var status = this.uiStatus();
@@ -73,7 +83,6 @@ var RemoteTrainer;
                         this.m_timer = window.setInterval(function () {
                             _this.uiFinishedOn(new Date());
                         }, 1000);
-                        this.parent.stopBreak(this.order - 1);
                         break;
                     case SerieStatus.Running:
                         this.uiStatus(SerieStatus.Finished);
@@ -83,7 +92,6 @@ var RemoteTrainer;
                         window.clearInterval(this.m_timer);
                         if (this.next) {
                             this.next.uiStatus(SerieStatus.Ready);
-                            this.parent.startBreak(this.order);
                         }
                         else {
                             // finish set

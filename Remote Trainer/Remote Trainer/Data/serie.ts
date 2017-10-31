@@ -49,7 +49,12 @@
             this.uiAmount = ko.observable<number>(template.amount);
             this.uiReps = ko.observable<number>(template.reps);
             this.uiDifficulty = ko.observable<string>(Serie.difficulties[3]);
-            this.uiStatus = ko.observable(SerieStatus.Queued);
+			this.uiStatus = ko.observable(SerieStatus.Queued);
+			this.uiStatus.subscribe(value => {
+				if (this.parent)
+					this.parent.serieStatusChanged(this, value);
+			}, this);
+
             this.uiStartedOn = ko.observable<Date>();
             this.uiFinishedOn = ko.observable<Date>();
             this.uiOptionsContentTemplate = ko.observable<string>("tmplOptionsSerieSettings");
@@ -63,7 +68,15 @@
                 }
                 return -1;
             });
-        }
+		}
+
+		public activate(): void {
+			this.uiStatus(SerieStatus.Ready);
+		}
+
+		public start(): void {
+			this.uiStatus(SerieStatus.Running);
+		}
 
         public onStatusClicked(): void {
             var status = this.uiStatus();
@@ -84,7 +97,6 @@
                     this.m_timer = window.setInterval(() => {
                         this.uiFinishedOn(new Date());
                     }, 1000);
-                    this.parent.stopBreak(this.order - 1);
                     break;
 
                 case SerieStatus.Running:
@@ -95,7 +107,6 @@
                     window.clearInterval(this.m_timer);
                     if (this.next) {
                         this.next.uiStatus(SerieStatus.Ready);
-                        this.parent.startBreak(this.order);
                     }
                     else {
                         // finish set
