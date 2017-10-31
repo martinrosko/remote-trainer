@@ -94,9 +94,9 @@ var RemoteTrainer;
                         break;
                 }
             };
-            Serie.difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
             return Serie;
         }(SerieTemplate));
+        Serie.difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
         Data.Serie = Serie;
         var SerieStatus;
         (function (SerieStatus) {

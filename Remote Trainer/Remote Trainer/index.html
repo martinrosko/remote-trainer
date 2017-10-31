@@ -17,8 +17,9 @@
 
     <link rel="stylesheet" href="app.css" type="text/css" />
 
-    <script src="Libraries/jquery-3.2.1.js"></script>
+    <script src="Libraries/jquery-1.7.1.min.js"></script>
     <script src="Libraries/knockout-3.4.2.js"></script>
+    <script src="Libraries/moment-2.19.1.min.js"></script>
     <script src="UI/koCustomBindings.js"></script>
     <script src="Data/category.js"></script>
     <script src="Data/exercise.js"></script>
@@ -37,15 +38,30 @@
     </script>
 
     <script id="tmplApplication" type="text/html">
-        <!-- ko template: { name: 'tmplSet', data: set } --><!-- /ko -->
+        <!-- ko template: { name: 'tmplWorkoutPage', data: workout } --><!-- /ko -->
+    </script>
+
+    <script id="tmplWorkoutPage" type="text/html">
+        <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Ready -->
+            <img src="Images/serieStatusReady.png" data-bind="click: start" style="width: 50px" />
+        <!-- /ko -->
+        <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running -->
+        <img src="Images/serieStatusRunning.png" data-bind="click: pause" style="width: 50px" /><br />
+        Working out: <span data-bind="text: uiDurationLabel" /> (<span data-bind="text: uiCompletion" />% Complete)<br />
+        Estimated end: <span data-bind="text: uiEstimatedEndLabel" />
+        <!-- /ko -->
+        <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Paused -->
+        <img src="Images/serieStatusReady.png" data-bind="click: continueWorkout" style="width: 50px" />
+        <img src="Images/serieStatusRunning.png" data-bind="click: stop" style="width: 50px" />
+        Break 05:12
+        <!-- /ko -->
+        <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Finished -->
+        Workout summary
+        <!-- /ko -->
     </script>
 
     <script id="tmplSet" type="text/html">
         <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
-            <div class="header">
-                00:43:14 (20% Done)
-                End at 12:30 (in 15minute(s))
-            </div>
             <div style="width: 100%; text-align: center; color: black; display: flex; background: #333333; padding-top: 5px">
                 <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Workout</h2></div>
                 <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px #eeeeee; background: #eeeeee"><h2>Set</h2></div>

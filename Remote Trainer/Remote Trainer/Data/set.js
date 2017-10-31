@@ -14,6 +14,7 @@ var RemoteTrainer;
     (function (Data) {
         var SetTemplate = (function () {
             function SetTemplate() {
+                this.serieTemplates = [];
             }
             SetTemplate.prototype.addSerie = function (serie) {
                 this.serieTemplates.push(serie);
@@ -39,8 +40,10 @@ var RemoteTrainer;
                     serie.parent = _this;
                     serie.order = index;
                     series.push(serie);
-                    if (index > 0)
+                    if (index > 0) {
                         series[index - 1].next = serie;
+                        serie.previous = series[index - 1];
+                    }
                     _this.breaks.push(ko.observable(-1));
                 }, _this);
                 _this.series.valueHasMutated();
@@ -60,11 +63,11 @@ var RemoteTrainer;
                 }
             };
             Set.prototype.onContinueClicked = function () {
-                if (RemoteTrainer.Program.instance.index < RemoteTrainer.Program.instance.m_setTemplates.length - 1) {
-                    var set = new Set(RemoteTrainer.Program.instance.m_setTemplates[++RemoteTrainer.Program.instance.index]);
-                    RemoteTrainer.Program.instance.set(set);
-                    set.series()[0].uiStatus(Data.SerieStatus.Ready);
-                }
+                //if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {
+                //    var set = new Set(Program.instance.m_setTemplates[++Program.instance.index]);
+                //    Program.instance.set(set);
+                //    set.series()[0].uiStatus(Data.SerieStatus.Ready);
+                //}
             };
             return Set;
         }(SetTemplate));

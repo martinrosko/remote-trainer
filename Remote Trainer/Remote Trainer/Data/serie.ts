@@ -35,8 +35,10 @@
         public uiReps: KnockoutObservable<number>;
         public uiDifficulty: KnockoutObservable<string>;
         public uiOptionsContentTemplate: KnockoutObservable<string>;
-        public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
+		public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
+		public parent: Set;
         public next: Serie;
+		public previous: Serie;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -82,7 +84,7 @@
                     this.m_timer = window.setInterval(() => {
                         this.uiFinishedOn(new Date());
                     }, 1000);
-                    (<Set>this.parent).stopBreak(this.order - 1);
+                    this.parent.stopBreak(this.order - 1);
                     break;
 
                 case SerieStatus.Running:
@@ -93,7 +95,7 @@
                     window.clearInterval(this.m_timer);
                     if (this.next) {
                         this.next.uiStatus(SerieStatus.Ready);
-                        (<Set>this.parent).startBreak(this.order);
+                        this.parent.startBreak(this.order);
                     }
                     else {
                         // finish set

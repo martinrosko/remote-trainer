@@ -4,6 +4,10 @@
         public serieTemplates: SerieTemplate[];
         public parent: WorkoutTemplate;
 
+		constructor() {
+			this.serieTemplates = [];
+		}
+
         public addSerie(serie: SerieTemplate): void {
             this.serieTemplates.push(serie);
             serie.parent = this;
@@ -17,7 +21,10 @@
 
     export class Set extends SetTemplate {
         public series: KnockoutObservableArray<Serie>;
-        public breaks: KnockoutObservable<number>[];
+		public breaks: KnockoutObservable<number>[];
+		public parent: Workout;
+		public next: Set;
+		public previous: Set;
 
         constructor(template: SetTemplate) {
             super();
@@ -31,9 +38,10 @@
                 serie.parent = this;
                 serie.order = index;                
                 series.push(serie);
-                if (index > 0)
-                    series[index - 1].next = serie;
-
+				if (index > 0) {
+					series[index - 1].next = serie;
+					serie.previous = series[index - 1];
+				}
                 this.breaks.push(ko.observable<number>(-1));
             }, this);
             this.series.valueHasMutated();
@@ -41,7 +49,7 @@
 
         public startBreak(index: number): void {
             this.breaks[index](0);
-            this.m_timer = window.setInterval(function(breakStart,) {
+            this.m_timer = window.setInterval(function(breakStart: number) {
                 var now = Math.round(new Date().getTime() / 1000);
                 this.breaks[index](now - breakStart);
             }.bind(this), 1000, Math.round(new Date().getTime() / 1000));
@@ -55,11 +63,11 @@
         }
 
         public onContinueClicked(): void {
-            if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {
-                var set = new Set(Program.instance.m_setTemplates[++Program.instance.index]);
-                Program.instance.set(set);
-                set.series()[0].uiStatus(Data.SerieStatus.Ready);
-            }
+            //if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {
+            //    var set = new Set(Program.instance.m_setTemplates[++Program.instance.index]);
+            //    Program.instance.set(set);
+            //    set.series()[0].uiStatus(Data.SerieStatus.Ready);
+            //}
         }
 
         private m_timer: number;
