@@ -1,8 +1,133 @@
 ﻿body {
     font-family: 'Segoe UI', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
+    padding: 0px;
+    margin: 0px;
 }
 
 span {
     font-style: italic;
+}
+
+div {
+    box-sizing: border-box;
+}
+
+.page .header {
+    width: 100%;
+    background: #333333;
+    color: white;
+    padding: 5px;
+}
+
+.set .serieHeader {
+    padding: 5px;
+    border-bottom: dotted 1px black
+}
+
+.set .serie {
+    padding: 0px;
+    border-bottom: solid 1px black;
+    background: white;
+    display: flex;
+    flex-direction: row;
+    height: 55px;
+    align-items: center;
+    position: relative;
+}
+
+    .set .serie .cell {
+        padding: 5px;
+        line-height: 45px;
+        height: 100%;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .set .serie .button {
+        width: 75px;
+        cursor: pointer;
+    }
+
+    .set .serie .info {
+        padding: 5px;
+        border-right: solid 1px black;
+        flex: 1;
+        height: 100%;
+    }
+
+    .set .serie .imgStatus {
+        background-position: 50% 50%;
+        background-size: 66%;
+        background-repeat: no-repeat;
+        border-right: dotted 1px #555555;
+    }
+
+    .set .serie .optionPanel {
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        left: -100%;
+    }
+
+.difficultyButton {
+    padding: 5px;
+    width: 20%;
+    border-right: dotted 1px black;
+    cursor: pointer;
+    line-height:normal;
+    font-size: 0.8em;
+}
+
+.difficultyButton:last-child {    
+    border-right: none;
+}
+
+    .set .serie .optionsContent {
+        flex: 1 1;
+    }
+
+    .set .serie .animateOpenOptions {
+        animation: 0.5s ease-in forwards openOptions;
+    }
+
+    @keyframes openOptions {
+        from { left: -100%; }
+        to { left: 0px; }
+    }
+
+    .set .serie .animateCloseOptions {
+        animation: 0.5s ease-in forwards closeOptions;
+    }
+
+    @keyframes closeOptions {
+        from { left: 0px; }
+        to { left: -100%; }
+    }
+
+span.bigDigit {
+    font-size: 2.8em;
+    font-weight: bold;
+}
+
+span.annotation {
+    font-size: 0.8em;
+}
+
+h1 {
+    font-size: 1.8em;
+    font-weight: bold;
+    display: inline;
+}
+
+h2 {
+    font-size: 1.2em;
+    font-weight: bold;
+    display: inline;
+}
+
+.highlight {
+    font-weight: bold;
 }

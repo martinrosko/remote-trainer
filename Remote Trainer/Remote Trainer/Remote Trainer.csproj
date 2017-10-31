@@ -74,8 +74,14 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="Data\category.ts" />
+    <TypeScriptCompile Include="Data\exercise.ts" />
+    <TypeScriptCompile Include="Data\set.ts" />
+    <TypeScriptCompile Include="Data\serie.ts" />
+    <TypeScriptCompile Include="Data\workout.ts" />
     <TypeScriptCompile Include="Libraries\jquery.d.ts" />
     <TypeScriptCompile Include="Libraries\knockout.d.ts" />
+    <TypeScriptCompile Include="UI\koCustomBindings.ts" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
