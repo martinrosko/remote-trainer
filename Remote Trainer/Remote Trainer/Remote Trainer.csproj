@@ -63,9 +63,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="editor.css" />
     <Content Include="app.css" />
+    <Content Include="editor.html" />
     <Content Include="index.html" />
-    <Content Include="Libraries\jquery-3.2.1.js" />
+    <Content Include="Libraries\jquery-1.7.1.min.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
     <Content Include="Specification.txt" />
     <Content Include="Web.config" />

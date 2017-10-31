@@ -1,0 +1,27 @@
+﻿6body {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 14px;
+}
+
+span {
+    font-style: italic;
+}
+
+.numberPickerButton {
+  width: 60px;
+  height: 40px;
+  border: solid 1px black;
+  background: white;
+  margin: 5px 15px;
+  line-height: 40px;
+  font-weight: bold;
+  font-size: 1.25em;
+}
+
+.buttonRemove {
+  background: #ffa9a9;
+}
+
+.buttonAdd {
+  background: #a9ffa9;
+}
