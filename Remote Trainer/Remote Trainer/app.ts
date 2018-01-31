@@ -27,12 +27,12 @@
                 Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
             }, 1000);
 
-            this._createDemoData();
-            this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
-            this.workout().start();
         }
 
         public runApplication() {
+            this._createDemoData();
+            this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+            this.workout().start();
             ko.applyBindings(this);
         }
 
@@ -57,99 +57,117 @@
             this.m_categories = [new Data.Category("Brucho", "#eeece1", "#ddd9c4"),
                 new Data.Category("Cardio", "blue", "navy"),
                 new Data.Category("Prsia", "#dce6f1", "#b8cce4"),
-                new Data.Category("Nohy", "#dce6f1", "#b8cce4"),
-                new Data.Category("Ramena", "#dce6f1", "#b8cce4")];
+				new Data.Category("Biceps", "#f2dcdb", "#e6b8b7"),
+				new Data.Category("Chrbat", "#ebf1de", "#d8e4bc"),
+				new Data.Category("Triceps", "#e4dfec", "#ccc0da"),
+				new Data.Category("Nohy", "#daeef3", "#b7dee8"),
+				new Data.Category("Ramena", "#fde9d9", "#fcd5b4")];
 
             this.m_exercises = [];
             var exercise = new Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Skracovacky";
             exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Pritahy k brade na lavicke";
             exercise.uoa = Data.UnitOfAmount.none;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Skracovacky na stroji";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1.5;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Vytacanie do boku";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 2.5;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[2];
             exercise.name = "Tlaky v sede na stroji";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[2];
             exercise.name = "Bench sikma dole";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Drepy v raily";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Kracanie so zatazou";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Predkopavanie";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Zakopavanie";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Lytka sikma";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 1.5;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Upazovanie s cinkami";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 4;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Predpazovanie s cinkami";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 4;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Tlak na stroji";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Trapezy";
             exercise.uoa = Data.UnitOfAmount.kg;
             exercise.uor = Data.UnitOfRepetitions.reps;
+			exercise.averageDurationPerRep = 2;
             this.m_exercises.push(exercise);
             exercise = new Data.Exercise();
             exercise = new Data.Exercise();
@@ -157,6 +175,7 @@
             exercise.name = "Plank";
             exercise.uoa = Data.UnitOfAmount.none;
             exercise.uor = Data.UnitOfRepetitions.sec;
+			exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
 
             this.m_workoutTemplate = new Data.WorkoutTemplate();

@@ -39,7 +39,9 @@
         public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
         public uiCountDown: KnockoutObservable<number>;
         public exercise: Exercise;
+		public parent: Set;
         public next: Serie;
+		public previous: Serie;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -50,7 +52,12 @@
             this.uiAmount = ko.observable<number>(template.amount);
             this.uiReps = ko.observable<number>(template.reps);
             this.uiDifficulty = ko.observable<string>(Serie.difficulties[3]);
-            this.uiStatus = ko.observable(SerieStatus.Queued);
+			this.uiStatus = ko.observable(SerieStatus.Queued);
+			this.uiStatus.subscribe(value => {
+				if (this.parent)
+					this.parent.serieStatusChanged(this, value);
+			}, this);
+
             this.uiStartedOn = ko.observable<Date>();
             this.uiFinishedOn = ko.observable<Date>();
             this.uiOptionsContentTemplate = ko.observable<string>("tmplOptionsSerieSettings");
@@ -73,6 +80,14 @@
 
             this.exercise = template.exercise;
         }
+
+		public activate(): void {
+			this.uiStatus(SerieStatus.Ready);
+		}
+
+		public start(): void {
+			this.uiStatus(SerieStatus.Running);
+		}
 
         public onStatusClicked(): void {
             var status = this.uiStatus();
@@ -115,7 +130,6 @@
 
                     if (this.next) {
                         this.next.uiStatus(SerieStatus.Ready);
-                        (<Set>this.parent).startBreak(this.order);
                     }
                     else {
                         // finish set

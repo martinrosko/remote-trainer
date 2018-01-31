@@ -1,13 +1,12 @@
 ﻿module RemoteTrainer.Data {
     export class WorkoutTemplate {
-        public setTemplates: SetTemplate[];
+		public name: string;
+		public description: string;
+		public setTemplates: SetTemplate[];
 
-        public name: string;
-        public description: string;
-
-        constructor() {
-            this.setTemplates = [];
-        }
+		constructor() {
+			this.setTemplates = [];
+		}
 
         public addSet(set: SetTemplate): void {
             this.setTemplates.push(set);

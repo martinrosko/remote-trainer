@@ -27,7 +27,9 @@
         public breaks: KnockoutObservable<number>[];
         public startedTimeSpan: KnockoutObservable<number>;
         public finishedTimeSpan: KnockoutObservable<number>;
+        public parent: Workout;
         public next: Set;
+        public previous: Set;
 
         constructor(template: SetTemplate) {
             super();
@@ -41,10 +43,13 @@
             template.serieTemplates.forEach((serieTemplate, index) => {
                 var serie = new Serie(serieTemplate);
                 serie.parent = this;
-                serie.order = index;                
+				serie.order = index;                
+
                 series.push(serie);
-                if (index > 0)
+                if (index > 0) {
                     series[index - 1].next = serie;
+                    serie.previous = series[index - 1];
+                }
 
                 if (this.exercises().indexOf(serie.exercise) < 0)
                     this.exercises().push(serie.exercise);
@@ -100,6 +105,17 @@
             if (timerIndex >= 0)
                 Program.instance.GlobalTimer.splice(timerIndex, 1);
         }
+
+        public serieStatusChanged(serie: Serie, status: SerieStatus): void {
+            var index = this.series().indexOf(serie);
+            if (status === SerieStatus.Finished) {
+                this.startBreak(index);
+                this.parent.updateCompletionStatus();
+            }
+            else if (status === SerieStatus.Running)
+                this.stopBreak(index);
+        }
+
 
         public onContinueClicked(): void {
             if (this.next)

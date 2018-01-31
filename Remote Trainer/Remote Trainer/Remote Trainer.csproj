@@ -31,6 +31,19 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <TypeScriptTarget>ES5</TypeScriptTarget>
+    <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
+    <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptNoImplicitAny>True</TypeScriptNoImplicitAny>
+    <TypeScriptModuleKind>CommonJS</TypeScriptModuleKind>
+    <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
+    <TypeScriptOutFile />
+    <TypeScriptOutDir />
+    <TypeScriptGeneratesDeclarations>False</TypeScriptGeneratesDeclarations>
+    <TypeScriptNoEmitOnError>True</TypeScriptNoEmitOnError>
+    <TypeScriptSourceMap>True</TypeScriptSourceMap>
+    <TypeScriptMapRoot />
+    <TypeScriptSourceRoot />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -55,6 +68,7 @@
     <TypeScriptSourceRoot />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="Images\Thumbs.db" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -63,19 +77,27 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="editor.css" />
     <Content Include="app.css" />
-    <Content Include="Images\done.png" />
-    <Content Include="Images\play.png" />
-    <Content Include="Images\stop.png" />
-    <Content Include="design.html" />
+    <Content Include="editor.html" />
+    <Content Include="Images\serieStatusFinished.png" />
+    <Content Include="Images\serieStatusPaused.png" />
+    <Content Include="Images\serieStatusQueued.png" />
+    <Content Include="Images\serieStatusReady.png" />
+    <Content Include="Images\serieStatusRunning.png" />
+    <Content Include="Images\setup.png" />
     <Content Include="index.html" />
-    <Content Include="Libraries\jquery-3.2.1.js" />
+    <Content Include="Libraries\jquery-1.7.1.min.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
+    <Content Include="Libraries\moment-2.19.1.min.js" />
     <Content Include="Specification.txt" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="Common\common.ts" />
+    <TypeScriptCompile Include="Common\event.ts" />
+    <TypeScriptCompile Include="Common\exception.ts" />
     <TypeScriptCompile Include="Data\category.ts" />
     <TypeScriptCompile Include="Data\exercise.ts" />
     <TypeScriptCompile Include="Data\set.ts" />
@@ -83,6 +105,7 @@
     <TypeScriptCompile Include="Data\workout.ts" />
     <TypeScriptCompile Include="Libraries\jquery.d.ts" />
     <TypeScriptCompile Include="Libraries\knockout.d.ts" />
+    <TypeScriptCompile Include="Libraries\moment.d.ts" />
     <TypeScriptCompile Include="UI\koCustomBindings.ts" />
   </ItemGroup>
   <ItemGroup>

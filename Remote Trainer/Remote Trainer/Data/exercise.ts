@@ -4,7 +4,8 @@
         public description: string;
         public category: Category;
         public uoa: UnitOfAmount;
-        public uor: UnitOfRepetitions;
+		public uor: UnitOfRepetitions;
+		public averageDurationPerRep: number;
     }
 
     export enum UnitOfAmount {
