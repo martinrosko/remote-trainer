@@ -22,6 +22,10 @@
     export class Set extends SetTemplate {
         public uiStatus: KnockoutComputed<SerieStatus>;
         public uiAverageDifficulty: KnockoutComputed<string>;
+        public duration: KnockoutComputed<number>; 
+        public uiDurationLabel: KnockoutComputed<string>;
+        public exercising: KnockoutComputed<number>;
+        public uiExercisingLabel: KnockoutComputed<string>;
         public series: KnockoutObservableArray<Serie>;
         public exercises: KnockoutObservableArray<Exercise>;
         public breaks: KnockoutObservable<number>[];
@@ -37,7 +41,7 @@
 
             this.exercises = ko.observableArray<Exercise>();
 
-            this.breaks = [];
+            this.breaks = [ko.observable(-1)];
             this.series = ko.observableArray<Serie>();
             var series = this.series();
             template.serieTemplates.forEach((serieTemplate, index) => {
@@ -80,8 +84,28 @@
                 return "";
             }, this);
 
-            this.startedTimeSpan = ko.observable<number>();
-            this.finishedTimeSpan = ko.observable<number>();
+            this.startedTimeSpan = ko.observable<number>(0);
+            this.finishedTimeSpan = ko.observable<number>(0);
+
+            this.duration = ko.computed(() => {
+                return Math.round((this.finishedTimeSpan() - this.startedTimeSpan()) / 1000);
+            }, this);
+
+            this.uiDurationLabel = ko.computed(() => {
+                var duration = this.duration();
+                return Program.instance.spanToTimeLabel(duration);
+            }, this);
+
+            this.exercising = ko.computed(() => {
+                let total = 0;
+                this.series().forEach(s => total += s.uiDuration());
+                return total;
+            }, this);
+
+            this.uiExercisingLabel = ko.computed(() => {
+                var exercising = this.exercising();
+                return Program.instance.spanToTimeLabel(exercising);
+            }, this);
 
             this.m_breakTimer = new GlobalTimer();
             this.m_breakTimer.fn = this._onBreakTick.bind(this);
@@ -107,10 +131,10 @@
         }
 
         public serieStatusChanged(serie: Serie, status: SerieStatus): void {
-            var index = this.series().indexOf(serie);
+            var index = this.series().indexOf(serie) + 1;
             if (status === SerieStatus.Finished) {
                 this.startBreak(index);
-                this.parent.updateCompletionStatus();
+                //this.parent.updateCompletionStatus();
             }
             else if (status === SerieStatus.Running)
                 this.stopBreak(index);
@@ -126,6 +150,7 @@
             (<Workout>this.parent).activeSet(this);
             this.series()[0].uiStatus(SerieStatus.Ready);
             this.startedTimeSpan(Date.now());
+            this.startBreak(0);
         }
 
         public stop(): void {

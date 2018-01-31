@@ -41,6 +41,10 @@ var RemoteTrainer;
                 _this.uiReps = ko.observable(template.reps);
                 _this.uiDifficulty = ko.observable(Serie.difficulties[3]);
                 _this.uiStatus = ko.observable(SerieStatus.Queued);
+                _this.uiStatus.subscribe(function (value) {
+                    if (_this.parent)
+                        _this.parent.serieStatusChanged(_this, value);
+                }, _this);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
@@ -61,6 +65,12 @@ var RemoteTrainer;
                 _this.exercise = template.exercise;
                 return _this;
             }
+            Serie.prototype.activate = function () {
+                this.uiStatus(SerieStatus.Ready);
+            };
+            Serie.prototype.start = function () {
+                this.uiStatus(SerieStatus.Running);
+            };
             Serie.prototype.onStatusClicked = function () {
                 var status = this.uiStatus();
                 switch (status) {
@@ -72,7 +82,7 @@ var RemoteTrainer;
                         // if not counting down already -> start countdown
                         var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
                         if (timerIndex < 0) {
-                            this.uiCountDown(6);
+                            this.uiCountDown(5);
                             this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
                             this.uiOptionsPanelState(OptionPanelState.Opening);
                             this.m_countDownTimer = new RemoteTrainer.GlobalTimer();
@@ -96,7 +106,6 @@ var RemoteTrainer;
                             RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
                         if (this.next) {
                             this.next.uiStatus(SerieStatus.Ready);
-                            this.parent.startBreak(this.order);
                         }
                         else {
                             // finish set

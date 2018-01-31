@@ -14,9 +14,6 @@ var RemoteTrainer;
             window.setInterval(function () {
                 Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
             }, 1000);
-            this._createDemoData();
-            this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
-            this.workout().start();
         }
         Object.defineProperty(Program, "instance", {
             get: function () {
@@ -28,6 +25,9 @@ var RemoteTrainer;
             configurable: true
         });
         Program.prototype.runApplication = function () {
+            this._createDemoData();
+            this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
+            this.workout().start();
             ko.applyBindings(this);
         };
         Program.prototype.onTabItemClicked = function (itemName) {
@@ -50,98 +50,116 @@ var RemoteTrainer;
             this.m_categories = [new RemoteTrainer.Data.Category("Brucho", "#eeece1", "#ddd9c4"),
                 new RemoteTrainer.Data.Category("Cardio", "blue", "navy"),
                 new RemoteTrainer.Data.Category("Prsia", "#dce6f1", "#b8cce4"),
-                new RemoteTrainer.Data.Category("Nohy", "#dce6f1", "#b8cce4"),
-                new RemoteTrainer.Data.Category("Ramena", "#dce6f1", "#b8cce4")];
+                new RemoteTrainer.Data.Category("Nohy", "#daeef3", "#b7dee8"),
+                new RemoteTrainer.Data.Category("Ramena", "#fde9d9", "#fcd5b4"),
+                new RemoteTrainer.Data.Category("Biceps", "#f2dcdb", "#e6b8b7"),
+                new RemoteTrainer.Data.Category("Chrbat", "#ebf1de", "#d8e4bc"),
+                new RemoteTrainer.Data.Category("Triceps", "#e4dfec", "#ccc0da")];
             this.m_exercises = [];
             var exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Skracovacky";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Pritahy k brade na lavicke";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.none;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Skracovacky na stroji";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1.5;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[0];
             exercise.name = "Vytacanie do boku";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 2.5;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[2];
             exercise.name = "Tlaky v sede na stroji";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[2];
             exercise.name = "Bench sikma dole";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Drepy v raily";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Kracanie so zatazou";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Predkopavanie";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Zakopavanie";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[3];
             exercise.name = "Lytka sikma";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 1.5;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Upazovanie s cinkami";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 4;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Predpazovanie s cinkami";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 4;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Tlak na stroji";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 3;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise.category = this.m_categories[4];
             exercise.name = "Trapezy";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.kg;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.reps;
+            exercise.averageDurationPerRep = 2;
             this.m_exercises.push(exercise);
             exercise = new RemoteTrainer.Data.Exercise();
             exercise = new RemoteTrainer.Data.Exercise();
@@ -149,6 +167,7 @@ var RemoteTrainer;
             exercise.name = "Plank";
             exercise.uoa = RemoteTrainer.Data.UnitOfAmount.none;
             exercise.uor = RemoteTrainer.Data.UnitOfRepetitions.sec;
+            exercise.averageDurationPerRep = 1;
             this.m_exercises.push(exercise);
             this.m_workoutTemplate = new RemoteTrainer.Data.WorkoutTemplate();
             this.m_workoutTemplate.name = "Chrbat / Triceps";
@@ -227,6 +246,12 @@ var RemoteTrainer;
             set.addSerie(serie1.clone());
             set.addSerie(serie2.clone());
             this.m_workoutTemplate.addSet(set);
+        };
+        // FIXME: move to helper class
+        Program.prototype.spanToTimeLabel = function (span) {
+            var minutes = (span / 60).toFixed(0);
+            var seconds = span % 60;
+            return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         };
         return Program;
     }());

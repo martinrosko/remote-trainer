@@ -33,7 +33,7 @@ var RemoteTrainer;
                 var _this = _super.call(this) || this;
                 template.copyTo(_this);
                 _this.exercises = ko.observableArray();
-                _this.breaks = [];
+                _this.breaks = [ko.observable(-1)];
                 _this.series = ko.observableArray();
                 var series = _this.series();
                 template.serieTemplates.forEach(function (serieTemplate, index) {
@@ -41,8 +41,10 @@ var RemoteTrainer;
                     serie.parent = _this;
                     serie.order = index;
                     series.push(serie);
-                    if (index > 0)
+                    if (index > 0) {
                         series[index - 1].next = serie;
+                        serie.previous = series[index - 1];
+                    }
                     if (_this.exercises().indexOf(serie.exercise) < 0)
                         _this.exercises().push(serie.exercise);
                     _this.breaks.push(ko.observable(-1));
@@ -66,8 +68,24 @@ var RemoteTrainer;
                     }
                     return "";
                 }, _this);
-                _this.startedTimeSpan = ko.observable();
-                _this.finishedTimeSpan = ko.observable();
+                _this.startedTimeSpan = ko.observable(0);
+                _this.finishedTimeSpan = ko.observable(0);
+                _this.duration = ko.computed(function () {
+                    return Math.round((_this.finishedTimeSpan() - _this.startedTimeSpan()) / 1000);
+                }, _this);
+                _this.uiDurationLabel = ko.computed(function () {
+                    var duration = _this.duration();
+                    return RemoteTrainer.Program.instance.spanToTimeLabel(duration);
+                }, _this);
+                _this.exercising = ko.computed(function () {
+                    var total = 0;
+                    _this.series().forEach(function (s) { return total += s.uiDuration(); });
+                    return total;
+                }, _this);
+                _this.uiExercisingLabel = ko.computed(function () {
+                    var exercising = _this.exercising();
+                    return RemoteTrainer.Program.instance.spanToTimeLabel(exercising);
+                }, _this);
                 _this.m_breakTimer = new RemoteTrainer.GlobalTimer();
                 _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
                 return _this;
@@ -88,6 +106,15 @@ var RemoteTrainer;
                 if (timerIndex >= 0)
                     RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
             };
+            Set.prototype.serieStatusChanged = function (serie, status) {
+                var index = this.series().indexOf(serie) + 1;
+                if (status === Data.SerieStatus.Finished) {
+                    this.startBreak(index);
+                    //this.parent.updateCompletionStatus();
+                }
+                else if (status === Data.SerieStatus.Running)
+                    this.stopBreak(index);
+            };
             Set.prototype.onContinueClicked = function () {
                 if (this.next)
                     this.next.start();
@@ -96,6 +123,7 @@ var RemoteTrainer;
                 this.parent.activeSet(this);
                 this.series()[0].uiStatus(Data.SerieStatus.Ready);
                 this.startedTimeSpan(Date.now());
+                this.startBreak(0);
             };
             Set.prototype.stop = function () {
                 this.finishedTimeSpan(Date.now());

@@ -57,11 +57,11 @@
             this.m_categories = [new Data.Category("Brucho", "#eeece1", "#ddd9c4"),
                 new Data.Category("Cardio", "blue", "navy"),
                 new Data.Category("Prsia", "#dce6f1", "#b8cce4"),
+                new Data.Category("Nohy", "#daeef3", "#b7dee8"),
+                new Data.Category("Ramena", "#fde9d9", "#fcd5b4"),
 				new Data.Category("Biceps", "#f2dcdb", "#e6b8b7"),
 				new Data.Category("Chrbat", "#ebf1de", "#d8e4bc"),
-				new Data.Category("Triceps", "#e4dfec", "#ccc0da"),
-				new Data.Category("Nohy", "#daeef3", "#b7dee8"),
-				new Data.Category("Ramena", "#fde9d9", "#fcd5b4")];
+				new Data.Category("Triceps", "#e4dfec", "#ccc0da")];
 
             this.m_exercises = [];
             var exercise = new Data.Exercise();
@@ -273,6 +273,13 @@
             set.addSerie(serie2.clone());
 
             this.m_workoutTemplate.addSet(set);
+        }
+
+        // FIXME: move to helper class
+        public spanToTimeLabel(span: number): string {
+            var minutes = (span / 60).toFixed(0);
+            var seconds = span % 60;
+            return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         }
 
         private m_categories: Data.Category[];

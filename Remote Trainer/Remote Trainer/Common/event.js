@@ -95,9 +95,9 @@ var Resco;
     var EventArgs = (function () {
         function EventArgs() {
         }
+        EventArgs.Empty = new EventArgs();
         return EventArgs;
     }());
-    EventArgs.Empty = new EventArgs();
     Resco.EventArgs = EventArgs;
     var ResizeEventArgs = (function (_super) {
         __extends(ResizeEventArgs, _super);

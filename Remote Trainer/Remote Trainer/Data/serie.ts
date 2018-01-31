@@ -102,7 +102,7 @@
                     // if not counting down already -> start countdown
                     let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
                     if (timerIndex < 0) {
-                        this.uiCountDown(6);
+                        this.uiCountDown(5);
                         this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
                         this.uiOptionsPanelState(OptionPanelState.Opening);
 

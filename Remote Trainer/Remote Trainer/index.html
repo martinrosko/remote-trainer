@@ -85,7 +85,7 @@
             <!-- /ko -->
                 <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
                 <div class="setinfo">
-                    <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b>07:19</b>, Exercising: <b>04:15</b>, Average Difficulty: <b><span data-bind="text: uiAverageDifficulty"/></b>
+                    <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b><span data-bind="text: uiDurationLabel" /></b>, Exercising: <b><span data-bind="text: uiExercisingLabel" /></b>, Average Difficulty: <b><span data-bind="text: uiAverageDifficulty"/></b>
                 </div>
                 <!-- /ko -->
                 <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
@@ -111,7 +111,7 @@
     <script id="tmplSetDetails" type="text/html">
         <!-- ko with: workout().activeSet() -->
         <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-            Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+            Break: <span class="highlight" data-bind="text: breaks[0]" /><span class="annotation"> sec</span>
         </div>
         <div class="set">
             <!-- ko foreach: series -->
@@ -153,7 +153,7 @@
             </div>
         </div>
         <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-            <!-- ko if: parent.breaks[order]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
+            <!-- ko if: parent.breaks[order + 1]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order + 1]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
         </div>
     </script>
 

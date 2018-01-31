@@ -54,7 +54,7 @@
         public start(): void {
             this.uiStartedOn(Date.now());
             this.activeSet = ko.observable<Data.Set>(this.sets()[0])
-            this.activeSet().series()[0].uiStatus(Data.SerieStatus.Ready);
+            this.activeSet().start();
         }
 
         public stop(): void {

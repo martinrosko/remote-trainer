@@ -52,7 +52,7 @@ var RemoteTrainer;
             Workout.prototype.start = function () {
                 this.uiStartedOn(Date.now());
                 this.activeSet = ko.observable(this.sets()[0]);
-                this.activeSet().series()[0].uiStatus(Data.SerieStatus.Ready);
+                this.activeSet().start();
             };
             Workout.prototype.stop = function () {
                 this.uiFinishedOn(Date.now());
