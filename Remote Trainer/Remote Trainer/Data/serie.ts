@@ -34,8 +34,11 @@
         public uiAmount: KnockoutObservable<number>;
         public uiReps: KnockoutObservable<number>;
         public uiDifficulty: KnockoutObservable<string>;
+        public difficulty: KnockoutComputed<number>;
         public uiOptionsContentTemplate: KnockoutObservable<string>;
         public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
+        public uiCountDown: KnockoutObservable<number>;
+        public exercise: Exercise;
         public next: Serie;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
@@ -52,6 +55,7 @@
             this.uiFinishedOn = ko.observable<Date>();
             this.uiOptionsContentTemplate = ko.observable<string>("tmplOptionsSerieSettings");
             this.uiOptionsPanelState = ko.observable<OptionPanelState>();
+            this.uiCountDown = ko.observable<number>();
 
             this.uiDuration = ko.computed<number>(() => {
                 var started = this.uiStartedOn();
@@ -61,6 +65,13 @@
                 }
                 return -1;
             });
+
+            this.difficulty = ko.computed(() => {
+                var diffLabel = this.uiDifficulty();
+                return Serie.difficulties.indexOf(diffLabel) + 1;
+            }, this);
+
+            this.exercise = template.exercise;
         }
 
         public onStatusClicked(): void {
@@ -72,33 +83,52 @@
                     this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
                     break;
 
-                case SerieStatus.Ready:
-                    this.uiStatus(SerieStatus.Running);
-                    this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                    this.uiOptionsPanelState(OptionPanelState.Opening);
-                    var now = new Date();
-                    this.uiStartedOn(now);
-                    this.uiFinishedOn(now);
-                    this.m_timer = window.setInterval(() => {
-                        this.uiFinishedOn(new Date());
-                    }, 1000);
-                    (<Set>this.parent).stopBreak(this.order - 1);
-                    break;
+                case SerieStatus.Ready: {
+                    // if not counting down already -> start countdown
+                    let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
+                    if (timerIndex < 0) {
+                        this.uiCountDown(6);
+                        this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                        this.uiOptionsPanelState(OptionPanelState.Opening);
 
-                case SerieStatus.Running:
+                        this.m_countDownTimer = new GlobalTimer();
+                        this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
+                        Program.instance.GlobalTimer.push(this.m_countDownTimer);
+                    }
+                    else {
+                        // otherwise skip countdown and start exercising immediately (second click on 'start' button)
+                        this._stopCountDown();
+                    }
+                    break;
+                }
+
+                case SerieStatus.Running: {
                     this.uiStatus(SerieStatus.Finished);
                     this.uiOptionsPanelState(OptionPanelState.Closing);
                     this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                     this.uiFinishedOn(new Date());
-                    window.clearInterval(this.m_timer);
+
+                    // unsubscribe the duration timer
+                    let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+                    if (timerIndex >= 0)
+                        Program.instance.GlobalTimer.splice(timerIndex, 1);
+
                     if (this.next) {
                         this.next.uiStatus(SerieStatus.Ready);
                         (<Set>this.parent).startBreak(this.order);
                     }
                     else {
                         // finish set
+                        let set = (<Set>this.parent);
+                        set.stop();
+
+                        if (set.next)
+                            set.next.start();
+                        else
+                            (<Workout>set.parent).stop();
                     }
                     break;
+                }
 
                 case SerieStatus.Finished:
                     this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
@@ -106,7 +136,42 @@
             }
         }
 
-        private m_timer: number;
+        private _stopCountDown(): void {
+            if (this.uiCountDown() > 0)
+                this.uiCountDown(0)
+
+            // unsubscribe countdown timer
+            let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
+            if (timerIndex >= 0)
+                Program.instance.GlobalTimer.splice(timerIndex, 1);
+
+            // start the exercise
+            this.uiStatus(SerieStatus.Running);
+            var now = new Date();
+            this.uiStartedOn(now);
+            this.uiFinishedOn(now);
+
+            // stop current break;
+            (<Set>this.parent).stopBreak(this.order - 1);
+
+            // subscribe duration timer to global timer
+            this.m_durationTimer = new GlobalTimer();
+            this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+            Program.instance.GlobalTimer.push(this.m_durationTimer);
+        }
+
+        private _onCountDownTimer(context: any): void {
+            this.uiCountDown(this.uiCountDown() - 1);
+            if (this.uiCountDown() == 0)
+                this._stopCountDown();
+        }
+
+        private _onDurationTimer(context: any): void {
+            this.uiFinishedOn(new Date());
+        }
+
+        private m_countDownTimer: GlobalTimer;
+        private m_durationTimer: GlobalTimer;
     }
 
     export enum SerieStatus {

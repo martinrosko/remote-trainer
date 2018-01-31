@@ -37,34 +37,88 @@
     </script>
 
     <script id="tmplApplication" type="text/html">
-        <!-- ko template: { name: 'tmplSet', data: set } --><!-- /ko -->
-    </script>
-
-    <script id="tmplSet" type="text/html">
         <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
             <div class="header">
                 00:43:14 (20% Done)
                 End at 12:30 (in 15minute(s))
             </div>
-            <div style="width: 100%; text-align: center; color: black; display: flex; background: #333333; padding-top: 5px">
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Workout</h2></div>
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px #eeeeee; background: #eeeeee"><h2>Set</h2></div>
-                <div style="flex: 1; height: 100%; padding: 5px; border-bottom: solid 1px black; color: white"><h2>Serie</h2></div>
+            <div class="tabControl">
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Workout</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Set</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Serie'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Serie</h2></div>
             </div>
-            <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-                Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+            <div class="content">
+                <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
             </div>
-            <div class="set">
-                <!-- ko foreach: series -->
-                    <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
-                <!-- /ko -->
+            <div style="width: 100%; text-align: center; background: #333333; padding: 10px 5px; color: white; border-bottom: solid 1px black">
+                <h2>Footer</h2>
             </div>
-            <!-- ko if: series()[series().length - 1].uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-            <div style="width: 100%; text-align: center; background: #333333; padding: 10px 5px; color: white; border-bottom: solid 1px black" data-bind="click: onContinueClicked">
-                <h2>Continue</h2>
-            </div>
+        </div>
+    </script>
+
+    <script id="tmplWorkoutDetails" type="text/html">
+        <!-- ko with: workout() -->
+        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+            Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+        </div>
+        <div class="set">
+            <!-- ko foreach: sets -->
+            <!-- ko template: { name: 'tmplSet' } --><!-- /ko -->
             <!-- /ko -->
         </div>
+        <!-- /ko -->
+    </script>
+
+    <script id="tmplSet" type="text/html">
+        <div class="set">
+            <!-- ko foreach: exercises -->
+                <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black" data-bind="style: { backgroundColor: category.colorDark }">
+                    <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
+                    <!-- ko foreach: $parent.series -->
+                        <!-- ko if: exercise === $parent -->
+                            <div style="border-left: solid 1px black; padding: 5px; width: 50px; text-align: center" data-bind="
+                                 style: { backgroundColor: $data.uiStatus() === RemoteTrainer.Data.SerieStatus.Finished ? $parent.category.colorLight : 'white' },
+                                 text: (uiAmount() !== undefined ? uiAmount() : '') + (uiAmount() !== undefined && uiReps() !== undefined ? '/' : '') + (uiReps() !== undefined ? uiReps() : '')" />
+                        <!-- /ko -->
+                    <!-- /ko -->
+                </div>
+            <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b>07:19</b>, Exercising: <b>04:15</b>, Average Difficulty: <b><span data-bind="text: uiAverageDifficulty"/></b>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusQueued.png" style="height: 16px; top: 2px; position: relative" /> Estimated start at: <b>10:22</b>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Running -->
+                <div class="serie">
+                    <div class="cell button imgStatus" style="width: 55px; background-image: url('Images/serieStatusRunning.png'); display: inline-block"></div>
+                    <div style="display: inline-block; padding-left: 5px">
+                        <span class="bigDigit">54</span><span class="annotation"> sec</span>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+                &nbsp;
+            </div>
+        </div>
+    </script>
+
+    <script id="tmplSetDetails" type="text/html">
+        <!-- ko with: workout().activeSet() -->
+        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+            Break: <span class="highlight">12</span><span class="annotation"> sec</span>
+        </div>
+        <div class="set">
+            <!-- ko foreach: series -->
+            <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
     </script>
 
     <script id="tmplSerie" type="text/html">
@@ -105,7 +159,12 @@
 
     <script id="tmplOptionsRunningSerie" type="text/html">
         <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
-            <span class="bigDigit" data-bind="text: uiDuration" /><span class="annotation"> sec</span>
+            <!-- ko if: uiCountDown() -->
+                <span class="bigDigit" style="color: red" data-bind="text: uiCountDown" />
+            <!-- /ko -->
+            <!-- ko if: !uiCountDown() -->
+                <span class="bigDigit" data-bind="text: uiDuration" /><span class="annotation"> sec</span>
+            <!-- /ko -->
         </div>
     </script>
 
@@ -130,6 +189,11 @@
             Nastavenia pre konkretnu serie: vynechat, zamenit, posunut na neskor...
         </div>
     </script>
+
+    <script id="tmplSerieDetails" type="text/html">
+        Serie details
+    </script>
+
 
 </body>
 </html>

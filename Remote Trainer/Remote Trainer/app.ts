@@ -1,4 +1,9 @@
 ﻿module RemoteTrainer {
+    export class GlobalTimer {
+        public fn: (context: any) => void;
+        public context: any;
+    }
+
     export class Program {
         private static s_instance: Program;
         static get instance(): Program {
@@ -7,18 +12,45 @@
             return Program.s_instance;
         }
 
-        public set: KnockoutObservable<Data.Set>;
+        public workout: KnockoutObservable<Data.Workout>;
+        //public activeSet: KnockoutObservable<Data.Set>;
+        public uiContentTemplateName: KnockoutObservable<string>;
+        public uiSelectedTabIndex: KnockoutObservable<number>;
+
+        public GlobalTimer: GlobalTimer[] = [];
+
+        constructor() {
+            this.uiSelectedTabIndex = ko.observable<number>(0);
+            this.uiContentTemplateName = ko.observable<string>("tmplWorkoutDetails");
+
+            window.setInterval(() => {
+                Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
+            }, 1000);
+
+            this._createDemoData();
+            this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+            this.workout().start();
+        }
 
         public runApplication() {
-            this._createDemoData();
-
-            this.set = ko.observable<Data.Set>(new Data.Set(this.m_setTemplates[0]));
-            this.set().series()[0].uiStatus(Data.SerieStatus.Ready);
-
-            //serie.uiStartedOn(new Date(Date.now()));
-            //serie.uiFinishedOn(new Date(Date.now()));
-
             ko.applyBindings(this);
+        }
+
+        public onTabItemClicked(itemName: string): void {
+            switch (itemName) {
+                case "Workout":
+                    this.uiContentTemplateName("tmplWorkoutDetails");
+                    this.uiSelectedTabIndex(0);
+                    break;
+                case "Set":
+                    this.uiContentTemplateName("tmplSetDetails");
+                    this.uiSelectedTabIndex(1);
+                    break;
+                case "Serie":
+                    this.uiContentTemplateName("tmplSerieDetails");
+                    this.uiSelectedTabIndex(2);
+                    break;
+            }
         }
 
         private _createDemoData() {
@@ -127,13 +159,20 @@
             exercise.uor = Data.UnitOfRepetitions.sec;
             this.m_exercises.push(exercise);
 
+            this.m_workoutTemplate = new Data.WorkoutTemplate();
+            this.m_workoutTemplate.name = "Chrbat / Triceps"
+            this.m_workoutTemplate.description = "Bla bla bla bla..."
 
-            this.m_setTemplates = [];
             var set = new Data.SetTemplate();
-            set.order = 1;
-            set.serieTemplates = [];
+            var serie1 = new Data.SerieTemplate(this.m_exercises[7], 20, 10);
+            set.addSerie(serie1);
+            set.addSerie(serie1.clone());
+            set.addSerie(serie1.clone());
 
-            var serie1 = new Data.SerieTemplate(this.m_exercises[6], 10, 50);
+            this.m_workoutTemplate.addSet(set);
+
+            set = new Data.SetTemplate();
+            serie1 = new Data.SerieTemplate(this.m_exercises[6], 10, 50);
             var serie2 = new Data.SerieTemplate(this.m_exercises[1], 30);
             set.addSerie(serie1);
             set.addSerie(serie2);
@@ -142,23 +181,9 @@
             set.addSerie(serie1.clone());
             set.addSerie(serie2.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 2;
-            set.serieTemplates = [];
-
-            serie1 = new Data.SerieTemplate(this.m_exercises[7], 20, 10);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
-
-            this.m_setTemplates.push(set);
-
-            set = new Data.SetTemplate();
-            set.order = 3;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[8], 10, 50);
             serie2 = new Data.SerieTemplate(this.m_exercises[2], 15, 70);
             set.addSerie(serie1);
@@ -168,23 +193,17 @@
             set.addSerie(serie1.clone());
             set.addSerie(serie2.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 4;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[9], 15, 35);
             set.addSerie(serie1);
             set.addSerie(serie1.clone());
             set.addSerie(serie1.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 5;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[10], 10, 120);
             serie2 = new Data.SerieTemplate(this.m_exercises[3], 10, 15);
             set.addSerie(serie1);
@@ -194,12 +213,9 @@
             set.addSerie(serie1.clone());
             set.addSerie(serie2.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 6;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[11], 10, 8);
             set.addSerie(serie1);
             serie2 = serie1.clone();
@@ -209,34 +225,25 @@
             serie2.reps = 6;
             set.addSerie(serie2);
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 7;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[12], 10, 10);
             set.addSerie(serie1);
             set.addSerie(serie1.clone());
             set.addSerie(serie1.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 8;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[13], 10, 35);
             set.addSerie(serie1);
             set.addSerie(serie1.clone());
             set.addSerie(serie1.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            set.order = 9;
-            set.serieTemplates = [];
-
             serie1 = new Data.SerieTemplate(this.m_exercises[14], 10, 20);
             serie2 = new Data.SerieTemplate(this.m_exercises[15], 75);
             set.addSerie(serie1);
@@ -246,12 +253,11 @@
             set.addSerie(serie1.clone());
             set.addSerie(serie2.clone());
 
-            this.m_setTemplates.push(set);
+            this.m_workoutTemplate.addSet(set);
         }
 
         private m_categories: Data.Category[];
         private m_exercises: Data.Exercise[];
-        public m_setTemplates: Data.SetTemplate[];
-        public index = 0;
+        private m_workoutTemplate: Data.WorkoutTemplate;
     }
 }

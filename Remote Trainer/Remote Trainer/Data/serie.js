@@ -45,6 +45,7 @@ var RemoteTrainer;
                 _this.uiFinishedOn = ko.observable();
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
                 _this.uiOptionsPanelState = ko.observable();
+                _this.uiCountDown = ko.observable();
                 _this.uiDuration = ko.computed(function () {
                     var started = _this.uiStartedOn();
                     var finished = _this.uiFinishedOn();
@@ -53,46 +54,92 @@ var RemoteTrainer;
                     }
                     return -1;
                 });
+                _this.difficulty = ko.computed(function () {
+                    var diffLabel = _this.uiDifficulty();
+                    return Serie.difficulties.indexOf(diffLabel) + 1;
+                }, _this);
+                _this.exercise = template.exercise;
                 return _this;
             }
             Serie.prototype.onStatusClicked = function () {
-                var _this = this;
                 var status = this.uiStatus();
                 switch (status) {
                     case SerieStatus.Queued:
                         this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
                         this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
                         break;
-                    case SerieStatus.Ready:
-                        this.uiStatus(SerieStatus.Running);
-                        this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                        this.uiOptionsPanelState(OptionPanelState.Opening);
-                        var now = new Date();
-                        this.uiStartedOn(now);
-                        this.uiFinishedOn(now);
-                        this.m_timer = window.setInterval(function () {
-                            _this.uiFinishedOn(new Date());
-                        }, 1000);
-                        this.parent.stopBreak(this.order - 1);
+                    case SerieStatus.Ready: {
+                        // if not counting down already -> start countdown
+                        var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
+                        if (timerIndex < 0) {
+                            this.uiCountDown(6);
+                            this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                            this.uiOptionsPanelState(OptionPanelState.Opening);
+                            this.m_countDownTimer = new RemoteTrainer.GlobalTimer();
+                            this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
+                            RemoteTrainer.Program.instance.GlobalTimer.push(this.m_countDownTimer);
+                        }
+                        else {
+                            // otherwise skip countdown and start exercising immediately (second click on 'start' button)
+                            this._stopCountDown();
+                        }
                         break;
-                    case SerieStatus.Running:
+                    }
+                    case SerieStatus.Running: {
                         this.uiStatus(SerieStatus.Finished);
                         this.uiOptionsPanelState(OptionPanelState.Closing);
                         this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                         this.uiFinishedOn(new Date());
-                        window.clearInterval(this.m_timer);
+                        // unsubscribe the duration timer
+                        var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+                        if (timerIndex >= 0)
+                            RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
                         if (this.next) {
                             this.next.uiStatus(SerieStatus.Ready);
                             this.parent.startBreak(this.order);
                         }
                         else {
                             // finish set
+                            var set = this.parent;
+                            set.stop();
+                            if (set.next)
+                                set.next.start();
+                            else
+                                set.parent.stop();
                         }
                         break;
+                    }
                     case SerieStatus.Finished:
                         this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
                         break;
                 }
+            };
+            Serie.prototype._stopCountDown = function () {
+                if (this.uiCountDown() > 0)
+                    this.uiCountDown(0);
+                // unsubscribe countdown timer
+                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
+                if (timerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                // start the exercise
+                this.uiStatus(SerieStatus.Running);
+                var now = new Date();
+                this.uiStartedOn(now);
+                this.uiFinishedOn(now);
+                // stop current break;
+                this.parent.stopBreak(this.order - 1);
+                // subscribe duration timer to global timer
+                this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
+            };
+            Serie.prototype._onCountDownTimer = function (context) {
+                this.uiCountDown(this.uiCountDown() - 1);
+                if (this.uiCountDown() == 0)
+                    this._stopCountDown();
+            };
+            Serie.prototype._onDurationTimer = function (context) {
+                this.uiFinishedOn(new Date());
             };
             Serie.difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
             return Serie;
