@@ -11,6 +11,7 @@ var RemoteTrainer;
             this.GlobalTimer = [];
             this.uiSelectedTabIndex = ko.observable(0);
             this.uiContentTemplateName = ko.observable("tmplWorkoutDetails");
+            this.uiFooterTemplateName = ko.observable();
             window.setInterval(function () {
                 Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
             }, 1000);
@@ -25,19 +26,28 @@ var RemoteTrainer;
             configurable: true
         });
         Program.prototype.runApplication = function () {
-            this._createDemoData();
-            this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
-            this.workout().start();
-            ko.applyBindings(this);
+            var _this = this;
+            this.m_dataProvider = new RemoteTrainer.Service.JSBridgeProvider();
+            this.m_dataProvider.loadData(function (categories, exercises, workouts) {
+                _this._createDemoData();
+                _this.m_categories = categories;
+                _this.m_exercises = exercises;
+                _this.m_workoutTemplates = workouts;
+                _this.workout = ko.observable(new RemoteTrainer.Data.Workout(_this.m_workoutTemplates[0]));
+                _this.workout().start();
+                ko.applyBindings(_this);
+            });
         };
         Program.prototype.onTabItemClicked = function (itemName) {
             switch (itemName) {
                 case "Workout":
                     this.uiContentTemplateName("tmplWorkoutDetails");
+                    this.uiFooterTemplateName("");
                     this.uiSelectedTabIndex(0);
                     break;
                 case "Set":
                     this.uiContentTemplateName("tmplSetDetails");
+                    this.uiFooterTemplateName("tmplSetDetailsFooter");
                     this.uiSelectedTabIndex(1);
                     break;
                 case "Serie":
@@ -45,6 +55,9 @@ var RemoteTrainer;
                     this.uiSelectedTabIndex(2);
                     break;
             }
+        };
+        Program.prototype._loadTemplates = function () {
+            ;
         };
         Program.prototype._createDemoData = function () {
             this.m_categories = [new RemoteTrainer.Data.Category("Brucho", "#eeece1", "#ddd9c4"),
@@ -249,7 +262,7 @@ var RemoteTrainer;
         };
         // FIXME: move to helper class
         Program.prototype.spanToTimeLabel = function (span) {
-            var minutes = (span / 60).toFixed(0);
+            var minutes = Math.floor(span / 60).toString();
             var seconds = span % 60;
             return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         };

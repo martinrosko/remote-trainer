@@ -88,6 +88,7 @@
     <Content Include="Images\setup.png" />
     <Content Include="index.html" />
     <Content Include="Libraries\jquery-1.7.1.min.js" />
+    <Content Include="Libraries\JSBridge.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
     <Content Include="Libraries\moment-2.19.1.min.js" />
     <Content Include="Specification.txt" />
@@ -104,8 +105,11 @@
     <TypeScriptCompile Include="Data\serie.ts" />
     <TypeScriptCompile Include="Data\workout.ts" />
     <TypeScriptCompile Include="Libraries\jquery.d.ts" />
+    <TypeScriptCompile Include="Libraries\JSBridge.d.ts" />
     <TypeScriptCompile Include="Libraries\knockout.d.ts" />
     <TypeScriptCompile Include="Libraries\moment.d.ts" />
+    <TypeScriptCompile Include="Service\IDataProvider.ts" />
+    <TypeScriptCompile Include="Service\JSBridgeProvider.ts" />
     <TypeScriptCompile Include="UI\koCustomBindings.ts" />
   </ItemGroup>
   <ItemGroup>

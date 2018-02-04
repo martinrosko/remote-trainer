@@ -43,16 +43,19 @@ var RemoteTrainer;
                     set.parent = _this;
                     set.order = index;
                     sets.push(set);
-                    if (index > 0)
+                    if (index > 0) {
                         sets[index - 1].next = set;
+                        set.previous = sets[index - 1];
+                    }
                 }, _this);
+                _this.displayedSet = ko.observable();
                 _this.sets.valueHasMutated();
                 return _this;
             }
             Workout.prototype.start = function () {
                 this.uiStartedOn(Date.now());
-                this.activeSet = ko.observable(this.sets()[0]);
-                this.activeSet().start();
+                this.displayedSet = ko.observable(this.sets()[0]);
+                this.displayedSet().start();
             };
             Workout.prototype.stop = function () {
                 this.uiFinishedOn(Date.now());

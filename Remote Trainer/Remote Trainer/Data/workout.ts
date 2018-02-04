@@ -1,5 +1,6 @@
 ﻿module RemoteTrainer.Data {
     export class WorkoutTemplate {
+        public id: string;
 		public name: string;
 		public description: string;
 		public setTemplates: SetTemplate[];
@@ -26,7 +27,7 @@
         public uiStartedOn: KnockoutObservable<number>;
         public uiFinishedOn: KnockoutObservable<number>;
 
-        public activeSet: KnockoutObservable<Data.Set>;
+        public displayedSet: KnockoutObservable<Data.Set>;
 
         constructor(template: WorkoutTemplate) {
             super();
@@ -44,17 +45,21 @@
                 set.order = index;
                 sets.push(set);
 
-                if (index > 0)
+                if (index > 0) {
                     sets[index - 1].next = set;
+                    set.previous = sets[index - 1];
+                }
             }, this);
+
+            this.displayedSet = ko.observable<Data.Set>();
 
             this.sets.valueHasMutated();
         }
 
         public start(): void {
             this.uiStartedOn(Date.now());
-            this.activeSet = ko.observable<Data.Set>(this.sets()[0])
-            this.activeSet().start();
+            this.displayedSet = ko.observable<Data.Set>(this.sets()[0])
+            this.displayedSet().start();
         }
 
         public stop(): void {

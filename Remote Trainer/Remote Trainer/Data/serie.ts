@@ -1,5 +1,6 @@
 ﻿module RemoteTrainer.Data {
     export class SerieTemplate {
+        public id: string;
         public order: number;
         public amount: number;
         public reps: number;
@@ -30,9 +31,12 @@
         public uiStatus: KnockoutObservable<SerieStatus>;
         public uiStartedOn: KnockoutObservable<Date>;
         public uiFinishedOn: KnockoutObservable<Date>;
-        public uiDuration: KnockoutComputed<number>;
+        public duration: KnockoutComputed<number>;
+        public uiDuration: KnockoutComputed<string>;
         public uiAmount: KnockoutObservable<number>;
+        public uiAmountHasFocus: KnockoutObservable<boolean>
         public uiReps: KnockoutObservable<number>;
+        public uiRepsHasFocus: KnockoutObservable<boolean>
         public uiDifficulty: KnockoutObservable<string>;
         public difficulty: KnockoutComputed<number>;
         public uiOptionsContentTemplate: KnockoutObservable<string>;
@@ -41,7 +45,7 @@
         public exercise: Exercise;
 		public parent: Set;
         public next: Serie;
-		public previous: Serie;
+        public previous: Serie;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -50,7 +54,17 @@
             template.copyTo(this);
 
             this.uiAmount = ko.observable<number>(template.amount);
+            this.uiAmountHasFocus = ko.observable<boolean>(false);
+            this.uiAmountHasFocus.subscribe(hasFocus => {
+                // FIXME: validate value
+            }, this);
+
             this.uiReps = ko.observable<number>(template.reps);
+            this.uiRepsHasFocus = ko.observable<boolean>(false);
+            this.uiRepsHasFocus.subscribe(hasFocus => {
+                // FIXME: validate value
+            }, this);
+
             this.uiDifficulty = ko.observable<string>(Serie.difficulties[3]);
 			this.uiStatus = ko.observable(SerieStatus.Queued);
 			this.uiStatus.subscribe(value => {
@@ -64,7 +78,7 @@
             this.uiOptionsPanelState = ko.observable<OptionPanelState>();
             this.uiCountDown = ko.observable<number>();
 
-            this.uiDuration = ko.computed<number>(() => {
+            this.duration = ko.computed<number>(() => {
                 var started = this.uiStartedOn();
                 var finished = this.uiFinishedOn();
                 if (started && finished) {
@@ -72,6 +86,11 @@
                 }
                 return -1;
             });
+
+            this.uiDuration = ko.computed(() => {
+                let duration = this.duration();
+                return duration >= 0 ? Program.instance.spanToTimeLabel(duration) : "";
+            })
 
             this.difficulty = ko.computed(() => {
                 var diffLabel = this.uiDifficulty();
@@ -94,17 +113,17 @@
 
             switch (status) {
                 case SerieStatus.Queued:
-                    this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
-                    this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
+                    //this.uiOptionsPanelState(OptionPanelState.Closed);
+                    //this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
                     break;
 
                 case SerieStatus.Ready: {
+                    this.uiOptionsPanelState(OptionPanelState.Opened);
                     // if not counting down already -> start countdown
                     let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
                     if (timerIndex < 0) {
                         this.uiCountDown(5);
                         this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                        this.uiOptionsPanelState(OptionPanelState.Opening);
 
                         this.m_countDownTimer = new GlobalTimer();
                         this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
@@ -119,7 +138,7 @@
 
                 case SerieStatus.Running: {
                     this.uiStatus(SerieStatus.Finished);
-                    this.uiOptionsPanelState(OptionPanelState.Closing);
+                    this.uiOptionsPanelState(OptionPanelState.Closed);
                     this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                     this.uiFinishedOn(new Date());
 
@@ -145,9 +164,21 @@
                 }
 
                 case SerieStatus.Finished:
-                    this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
+                    this._toggleOptionsPanel();
                     break;
             }
+        }
+
+        public onAmountClicked(): void {
+            this.uiAmountHasFocus(true);
+        }
+
+        public onRepsClicked(): void {
+            this.uiRepsHasFocus(true);
+        }
+
+        private _toggleOptionsPanel(): void {
+            this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
         }
 
         private _stopCountDown(): void {
@@ -166,7 +197,7 @@
             this.uiFinishedOn(now);
 
             // stop current break;
-            (<Set>this.parent).stopBreak(this.order - 1);
+            (<Set>this.parent).stopBreak(this.order);
 
             // subscribe duration timer to global timer
             this.m_durationTimer = new GlobalTimer();

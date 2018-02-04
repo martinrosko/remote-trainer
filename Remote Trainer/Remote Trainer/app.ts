@@ -15,13 +15,17 @@
         public workout: KnockoutObservable<Data.Workout>;
         //public activeSet: KnockoutObservable<Data.Set>;
         public uiContentTemplateName: KnockoutObservable<string>;
+        public uiFooterTemplateName: KnockoutObservable<string>;
         public uiSelectedTabIndex: KnockoutObservable<number>;
 
         public GlobalTimer: GlobalTimer[] = [];
 
+        private m_dataProvider: Service.IDataProvider;
+
         constructor() {
             this.uiSelectedTabIndex = ko.observable<number>(0);
-            this.uiContentTemplateName = ko.observable<string>("tmplWorkoutDetails");
+            this.uiContentTemplateName = ko.observable<string>("tmplWorkoutDetails");    
+            this.uiFooterTemplateName = ko.observable<string>();
 
             window.setInterval(() => {
                 Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
@@ -30,20 +34,30 @@
         }
 
         public runApplication() {
-            this._createDemoData();
-            this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
-            this.workout().start();
-            ko.applyBindings(this);
+            this.m_dataProvider = new Service.JSBridgeProvider();
+
+            this.m_dataProvider.loadData((categories, exercises, workouts) => {
+                this._createDemoData();
+                this.m_categories = categories;
+                this.m_exercises = exercises;
+                this.m_workoutTemplates = workouts;
+
+                this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplates[0]));
+                this.workout().start();
+                ko.applyBindings(this);
+            })
         }
 
         public onTabItemClicked(itemName: string): void {
             switch (itemName) {
                 case "Workout":
                     this.uiContentTemplateName("tmplWorkoutDetails");
+                    this.uiFooterTemplateName("");
                     this.uiSelectedTabIndex(0);
                     break;
                 case "Set":
                     this.uiContentTemplateName("tmplSetDetails");
+                    this.uiFooterTemplateName("tmplSetDetailsFooter");
                     this.uiSelectedTabIndex(1);
                     break;
                 case "Serie":
@@ -51,6 +65,10 @@
                     this.uiSelectedTabIndex(2);
                     break;
             }
+        }
+
+        private _loadTemplates(): void {
+            ;
         }
 
         private _createDemoData() {
@@ -277,7 +295,7 @@
 
         // FIXME: move to helper class
         public spanToTimeLabel(span: number): string {
-            var minutes = (span / 60).toFixed(0);
+            var minutes = Math.floor(span / 60).toString();
             var seconds = span % 60;
             return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
         }
@@ -285,5 +303,6 @@
         private m_categories: Data.Category[];
         private m_exercises: Data.Exercise[];
         private m_workoutTemplate: Data.WorkoutTemplate;
+        private m_workoutTemplates: Data.WorkoutTemplate[];
     }
 }

@@ -33,7 +33,9 @@ var RemoteTrainer;
                 var _this = _super.call(this) || this;
                 template.copyTo(_this);
                 _this.exercises = ko.observableArray();
-                _this.breaks = [ko.observable(-1)];
+                _this.next = null;
+                _this.previous = null;
+                _this.breaks = [ko.observable("")];
                 _this.series = ko.observableArray();
                 var series = _this.series();
                 template.serieTemplates.forEach(function (serieTemplate, index) {
@@ -47,7 +49,7 @@ var RemoteTrainer;
                     }
                     if (_this.exercises().indexOf(serie.exercise) < 0)
                         _this.exercises().push(serie.exercise);
-                    _this.breaks.push(ko.observable(-1));
+                    _this.breaks.push(ko.observable("")); //ko.observable<number>(-1));
                 }, _this);
                 _this.series.valueHasMutated();
                 _this.uiStatus = ko.computed(function () {
@@ -58,6 +60,8 @@ var RemoteTrainer;
                         return Data.SerieStatus.Finished;
                     else if (serieStatuses.some(function (status) { return status === Data.SerieStatus.Paused; }))
                         return Data.SerieStatus.Paused;
+                    else if (serieStatuses[0] === Data.SerieStatus.Ready)
+                        return Data.SerieStatus.Ready;
                     return Data.SerieStatus.Running;
                 }, _this);
                 _this.uiAverageDifficulty = ko.computed(function () {
@@ -70,16 +74,14 @@ var RemoteTrainer;
                 }, _this);
                 _this.startedTimeSpan = ko.observable(0);
                 _this.finishedTimeSpan = ko.observable(0);
-                _this.duration = ko.computed(function () {
-                    return Math.round((_this.finishedTimeSpan() - _this.startedTimeSpan()) / 1000);
-                }, _this);
+                _this.duration = ko.observable(0);
                 _this.uiDurationLabel = ko.computed(function () {
                     var duration = _this.duration();
                     return RemoteTrainer.Program.instance.spanToTimeLabel(duration);
                 }, _this);
                 _this.exercising = ko.computed(function () {
                     var total = 0;
-                    _this.series().forEach(function (s) { return total += s.uiDuration(); });
+                    _this.series().forEach(function (s) { return total += s.duration(); });
                     return total;
                 }, _this);
                 _this.uiExercisingLabel = ko.computed(function () {
@@ -92,10 +94,14 @@ var RemoteTrainer;
             }
             Set.prototype._onBreakTick = function (context) {
                 var now = Math.round(new Date().getTime() / 1000);
-                this.breaks[context.index](now - context.breakStart);
+                this.breaks[context.index](RemoteTrainer.Program.instance.spanToTimeLabel(now - context.breakStart));
+            };
+            Set.prototype._onRunningTick = function (context) {
+                var now = Math.round(new Date().getTime() / 1000);
+                this.duration(now - context);
             };
             Set.prototype.startBreak = function (index) {
-                this.breaks[index](0);
+                this.breaks[index](RemoteTrainer.Program.instance.spanToTimeLabel(0));
                 // subscribe to global timer
                 this.m_breakTimer.context = { index: index, breakStart: Math.round(new Date().getTime() / 1000) };
                 RemoteTrainer.Program.instance.GlobalTimer.push(this.m_breakTimer);
@@ -103,8 +109,20 @@ var RemoteTrainer;
             Set.prototype.stopBreak = function (index) {
                 // unsubscribe to global timer
                 var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
-                if (timerIndex >= 0)
+                if (timerIndex >= 0) {
                     RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                    // if stopping first break it means that we are starting exercising in this set
+                    // -> start the duration timer
+                    // -> stop the last break in previous set (it was showing the break on previous page)
+                    if (index === 0) {
+                        this.m_runningTimer = new RemoteTrainer.GlobalTimer();
+                        this.m_runningTimer.context = Math.round(Date.now() / 1000);
+                        this.m_runningTimer.fn = this._onRunningTick.bind(this);
+                        RemoteTrainer.Program.instance.GlobalTimer.push(this.m_runningTimer);
+                        if (this.previous)
+                            this.previous.stopBreak(this.previous.breaks.length - 1);
+                    }
+                }
             };
             Set.prototype.serieStatusChanged = function (serie, status) {
                 var index = this.series().indexOf(serie) + 1;
@@ -113,20 +131,33 @@ var RemoteTrainer;
                     //this.parent.updateCompletionStatus();
                 }
                 else if (status === Data.SerieStatus.Running)
-                    this.stopBreak(index);
+                    this.stopBreak(index - 1);
             };
             Set.prototype.onContinueClicked = function () {
                 if (this.next)
                     this.next.start();
             };
             Set.prototype.start = function () {
-                this.parent.activeSet(this);
                 this.series()[0].uiStatus(Data.SerieStatus.Ready);
                 this.startedTimeSpan(Date.now());
                 this.startBreak(0);
             };
             Set.prototype.stop = function () {
                 this.finishedTimeSpan(Date.now());
+                var runningTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
+                if (runningTimerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
+            };
+            Set.prototype.showPrevious = function () {
+                this.parent.displayedSet(this.previous);
+            };
+            Set.prototype.showNext = function () {
+                this.parent.displayedSet(this.next);
+            };
+            Set.prototype.showRunningSet = function () {
+                var set = this.parent.sets().filter(function (s) { return s.uiStatus() === Data.SerieStatus.Running || s.uiStatus() === Data.SerieStatus.Ready; });
+                if (set.length > 0)
+                    this.parent.displayedSet(set[0]);
             };
             return Set;
         }(SetTemplate));
