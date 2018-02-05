@@ -29,31 +29,32 @@
 
         public displayedSet: KnockoutObservable<Data.Set>;
 
-        constructor(template: WorkoutTemplate) {
+        constructor(template?: WorkoutTemplate) {
             super();
-            template.copyTo(this);
 
             this.uiState = ko.observable(WorkoutState.Ready);
             this.uiStartedOn = ko.observable<number>();
             this.uiFinishedOn = ko.observable<number>();
             this.sets = ko.observableArray<Set>();
-            var sets = this.sets();
 
-            template.setTemplates.forEach((setTemplate, index) => {
-                var set = new Set(setTemplate);
-                set.parent = this;
-                set.order = index;
-                sets.push(set);
-
-                if (index > 0) {
-                    sets[index - 1].next = set;
-                    set.previous = sets[index - 1];
-                }
-            }, this);
+            if (template) {
+                template.copyTo(this);
+                template.setTemplates.forEach(setTemplate => this.addSet(new Set(setTemplate)), this);
+            }
 
             this.displayedSet = ko.observable<Data.Set>();
+        }
 
-            this.sets.valueHasMutated();
+        public addSet(set: Set): void {
+            let index = this.sets().length;
+            set.parent = this;
+            set.order = index;
+            this.sets().push(set);
+
+            if (index > 0) {
+                this.sets()[index - 1].next = set;
+                set.previous = this.sets()[index - 1];
+            }
         }
 
         public start(): void {

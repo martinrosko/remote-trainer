@@ -31,27 +31,15 @@ var RemoteTrainer;
             __extends(Set, _super);
             function Set(template) {
                 var _this = _super.call(this) || this;
-                template.copyTo(_this);
                 _this.exercises = ko.observableArray();
                 _this.next = null;
                 _this.previous = null;
                 _this.breaks = [ko.observable("")];
                 _this.series = ko.observableArray();
-                var series = _this.series();
-                template.serieTemplates.forEach(function (serieTemplate, index) {
-                    var serie = new Data.Serie(serieTemplate);
-                    serie.parent = _this;
-                    serie.order = index;
-                    series.push(serie);
-                    if (index > 0) {
-                        series[index - 1].next = serie;
-                        serie.previous = series[index - 1];
-                    }
-                    if (_this.exercises().indexOf(serie.exercise) < 0)
-                        _this.exercises().push(serie.exercise);
-                    _this.breaks.push(ko.observable("")); //ko.observable<number>(-1));
-                }, _this);
-                _this.series.valueHasMutated();
+                if (template) {
+                    template.copyTo(_this);
+                    template.serieTemplates.forEach(function (serieTemplate) { return _this.addSerie(new Data.Serie(serieTemplate)); }, _this);
+                }
                 _this.uiStatus = ko.computed(function () {
                     var serieStatuses = _this.series().map(function (s) { return s.uiStatus(); });
                     if (serieStatuses.every(function (status) { return status === Data.SerieStatus.Queued; }))
@@ -92,6 +80,19 @@ var RemoteTrainer;
                 _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
                 return _this;
             }
+            Set.prototype.addSerie = function (serie) {
+                var index = this.series().length;
+                serie.parent = this;
+                serie.order = index;
+                this.series().push(serie);
+                if (index > 0) {
+                    this.series()[index - 1].next = serie;
+                    serie.previous = this.series()[index - 1];
+                }
+                if (this.exercises().indexOf(serie.exercise) < 0)
+                    this.exercises().push(serie.exercise);
+                this.breaks.push(ko.observable(""));
+            };
             Set.prototype._onBreakTick = function (context) {
                 var now = Math.round(new Date().getTime() / 1000);
                 this.breaks[context.index](RemoteTrainer.Program.instance.spanToTimeLabel(now - context.breakStart));

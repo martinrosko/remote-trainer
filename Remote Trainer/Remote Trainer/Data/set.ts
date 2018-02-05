@@ -36,9 +36,8 @@
         public next: Set;
         public previous: Set;
 
-        constructor(template: SetTemplate) {
+        constructor(template?: SetTemplate) {
             super();
-            template.copyTo(this);
 
             this.exercises = ko.observableArray<Exercise>();
             this.next = null;
@@ -46,24 +45,11 @@
 
             this.breaks = [ko.observable("")];
             this.series = ko.observableArray<Serie>();
-            var series = this.series();
-            template.serieTemplates.forEach((serieTemplate, index) => {
-                var serie = new Serie(serieTemplate);
-                serie.parent = this;
-				serie.order = index;                
 
-                series.push(serie);
-                if (index > 0) {
-                    series[index - 1].next = serie;
-                    serie.previous = series[index - 1];
-                }
-
-                if (this.exercises().indexOf(serie.exercise) < 0)
-                    this.exercises().push(serie.exercise);
-
-                this.breaks.push(ko.observable(""));//ko.observable<number>(-1));
-            }, this);
-            this.series.valueHasMutated();
+            if (template) {
+                template.copyTo(this);
+                template.serieTemplates.forEach(serieTemplate => this.addSerie(new Serie(serieTemplate)), this);
+            }
 
             this.uiStatus = ko.computed(() => {
                 let serieStatuses = this.series().map(s => s.uiStatus());
@@ -112,6 +98,23 @@
 
             this.m_breakTimer = new GlobalTimer();
             this.m_breakTimer.fn = this._onBreakTick.bind(this);
+        }
+
+        public addSerie(serie: Serie): void {
+            let index = this.series().length;
+            serie.parent = this;
+            serie.order = index;
+
+            this.series().push(serie);
+            if (index > 0) {
+                this.series()[index - 1].next = serie;
+                serie.previous = this.series()[index - 1];
+            }
+
+            if (this.exercises().indexOf(serie.exercise) < 0)
+                this.exercises().push(serie.exercise);
+
+            this.breaks.push(ko.observable(""));
         }
 
         private _onBreakTick(context: any): void {
@@ -197,5 +200,7 @@
         private m_timer: number;
         private m_breakTimer: GlobalTimer;
         private m_runningTimer: GlobalTimer;
+
+        public entityWriter: Service.IEntityWriter;
     }
 }

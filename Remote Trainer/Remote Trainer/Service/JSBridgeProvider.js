@@ -5,7 +5,7 @@ var RemoteTrainer;
         var JSBridgeProvider = (function () {
             function JSBridgeProvider() {
             }
-            JSBridgeProvider.prototype.loadData = function (onLoaded) {
+            JSBridgeProvider.prototype.initialize = function (onLoaded) {
                 var _this = this;
                 this._loadCategories(function () { return _this._loadExercises(function () { return _this._loadTemplates(function () {
                     onLoaded(_this.m_categories, _this.m_exercises, _this.m_workoutTemplates);
@@ -62,7 +62,7 @@ var RemoteTrainer;
                 fetch.execute("DynamicEntities", function (workoutEntities) {
                     if (workoutEntities) {
                         for (var i = 0; i < workoutEntities.length; i++) {
-                            _this._loadWorkout(workoutEntities[i], function (workout) {
+                            _this._loadWorkoutTemplate(workoutEntities[i], function (workout) {
                                 _this.m_workoutTemplates.push(workout);
                                 if (_this.m_workoutTemplates.length === workoutEntities.length)
                                     onLoaded();
@@ -71,19 +71,19 @@ var RemoteTrainer;
                     }
                 }, function (err) { return MobileCRM.bridge.alert("Error getting workout templates: " + err); }, this);
             };
-            JSBridgeProvider.prototype._loadWorkout = function (workoutEntity, onLoaded) {
+            JSBridgeProvider.prototype._loadWorkoutTemplate = function (workoutEntity, onLoaded) {
                 var workout = new RemoteTrainer.Data.WorkoutTemplate();
                 workout.id = workoutEntity.id;
                 workout.name = workoutEntity.properties.name;
                 workout.description = workoutEntity.properties.description;
                 // load workout sets
-                this._loadSets(workout.id, function (sets) {
+                this._loadSetTemplates(workout.id, function (sets) {
                     workout.setTemplates = sets;
                     sets.forEach(function (s) { return s.parent = workout; });
                     onLoaded(workout);
                 });
             };
-            JSBridgeProvider.prototype._loadSets = function (workoutId, onLoaded) {
+            JSBridgeProvider.prototype._loadSetTemplates = function (workoutId, onLoaded) {
                 var _this = this;
                 var result = [];
                 var entity = new MobileCRM.FetchXml.Entity("set_template");
@@ -95,7 +95,7 @@ var RemoteTrainer;
                 fetch.execute("DynamicEntities", function (setEntities) {
                     if (setEntities) {
                         for (var i = 0; i < setEntities.length; i++) {
-                            _this._loadSet(setEntities[i], function (set) {
+                            _this._loadSetTemplate(setEntities[i], function (set) {
                                 result.push(set);
                                 if (result.length === setEntities.length)
                                     onLoaded(result);
@@ -104,18 +104,18 @@ var RemoteTrainer;
                     }
                 }, function (err) { return MobileCRM.bridge.alert("Error getting set templates: " + err); }, this);
             };
-            JSBridgeProvider.prototype._loadSet = function (setEntity, onLoaded) {
+            JSBridgeProvider.prototype._loadSetTemplate = function (setEntity, onLoaded) {
                 var set = new RemoteTrainer.Data.SetTemplate();
                 set.id = setEntity.id;
                 set.order = setEntity.properties.order;
                 // load workout sets
-                this._loadSeries(set.id, function (series) {
+                this._loadSerieTemplates(set.id, function (series) {
                     set.serieTemplates = series;
                     series.forEach(function (s) { return s.parent = set; });
                     onLoaded(set);
                 });
             };
-            JSBridgeProvider.prototype._loadSeries = function (setId, onLoaded) {
+            JSBridgeProvider.prototype._loadSerieTemplates = function (setId, onLoaded) {
                 var _this = this;
                 var result = [];
                 var entity = new MobileCRM.FetchXml.Entity("serie_template");
@@ -139,9 +139,131 @@ var RemoteTrainer;
                     }
                 }, function (err) { return MobileCRM.bridge.alert("Error getting serie templates: " + err); }, this);
             };
+            JSBridgeProvider.prototype.loadWorkout = function (workoutId, onLoaded) {
+                var _this = this;
+                var entity = new MobileCRM.FetchXml.Entity("workout");
+                entity.addAttributes();
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where("id", "eq", workoutId);
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("DynamicEntities", function (entity) {
+                    var result = new RemoteTrainer.Data.Workout();
+                    result.id = entity[0].id;
+                    result.name = entity[0].properties.name;
+                    result.description = entity[0].properties.comments;
+                    //result.uiState(entity.properties[0].statuscode);
+                    if (entity[0].properties.started_on)
+                        result.uiStartedOn(new Date(entity[0].properties.started_on).getTime());
+                    if (entity[0].properties.finished_on)
+                        result.uiFinishedOn(new Date(entity[0].properties.finished_on).getTime());
+                    _this._loadSets(result.id, function (sets) {
+                        if (sets)
+                            sets.forEach(function (set) { return result.addSet(set); });
+                        onLoaded(result);
+                    });
+                }, function (err) { return MobileCRM.bridge.alert("Error getting workout: " + err); }, this);
+            };
+            JSBridgeProvider.prototype._loadSets = function (workoutId, onLoaded) {
+                var _this = this;
+                var result = [];
+                var entity = new MobileCRM.FetchXml.Entity("set");
+                entity.addAttributes();
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where("workout", "eq", workoutId);
+                entity.orderBy("order", false);
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("DynamicEntities", function (setEntities) {
+                    if (setEntities && setEntities.length > 0) {
+                        for (var i = 0; i < setEntities.length; i++) {
+                            _this._loadSet(setEntities[i], function (set) {
+                                result.push(set);
+                                if (result.length === setEntities.length)
+                                    onLoaded(result);
+                            });
+                        }
+                    }
+                    else {
+                        onLoaded([]);
+                    }
+                }, function (err) { return MobileCRM.bridge.alert("Error getting sets: " + err); }, this);
+            };
+            JSBridgeProvider.prototype._loadSet = function (setEntity, onLoaded) {
+                var set = new RemoteTrainer.Data.Set();
+                set.id = setEntity.id;
+                set.order = setEntity.properties.order;
+                set.entityWriter = new JSBridgeEntityWriter(setEntity);
+                // load workout sets
+                this._loadSeries(set.id, function (series) {
+                    if (series)
+                        series.forEach(function (serie) { return set.addSerie(serie); });
+                    onLoaded(set);
+                });
+            };
+            JSBridgeProvider.prototype._loadSeries = function (setId, onLoaded) {
+                var _this = this;
+                var result = [];
+                var entity = new MobileCRM.FetchXml.Entity("serie");
+                entity.addAttributes();
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where("setid", "eq", setId);
+                entity.orderBy("order", false);
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("DynamicEntities", function (serieEntities) {
+                    if (serieEntities && serieEntities.length > 0) {
+                        for (var i = 0; i < serieEntities.length; i++) {
+                            var serie = new RemoteTrainer.Data.Serie();
+                            serie.id = serieEntities[i].id;
+                            serie.order = serieEntities[i].properties.order;
+                            serie.amount = serieEntities[i].properties.amount;
+                            serie.uiAmount(serie.amount);
+                            serie.reps = serieEntities[i].properties.reps;
+                            serie.uiReps(serie.reps);
+                            serie.exercise = _this.m_exercises.firstOrDefault(function (exercise) { return exercise.id === serieEntities[i].properties.exercise.id; });
+                            if (serieEntities[i].properties.started_on)
+                                serie.uiStartedOn(new Date(serieEntities[i].properties.started_on));
+                            if (serieEntities[i].properties.finished_on)
+                                serie.uiFinishedOn(new Date(serieEntities[i].properties.finished_on));
+                            serie.entityWriter = new JSBridgeEntityWriter(serieEntities[i]);
+                            result.push(serie);
+                        }
+                        onLoaded(result);
+                    }
+                    else {
+                        onLoaded([]);
+                    }
+                }, function (err) { return MobileCRM.bridge.alert("Error getting serie templates: " + err); }, this);
+            };
             return JSBridgeProvider;
         }());
         Service.JSBridgeProvider = JSBridgeProvider;
+        var JSBridgeEntityWriter = (function () {
+            function JSBridgeEntityWriter(entity /*MobileCRM.DynamicEntity*/) {
+                this.m_jsbEntity = entity;
+                this.m_oldValues = new Resco.Dictionary();
+            }
+            JSBridgeEntityWriter.prototype.subscribeObservableForWriting = function (obsVar, fieldName) {
+                var _this = this;
+                obsVar.subscribe(function (oldValue) {
+                    _this.m_oldValues.set(fieldName, oldValue);
+                }, this, "beforeChange");
+                obsVar.subscribe(function (value) {
+                    if (!_this.m_storageLock) {
+                        _this.m_jsbEntity.properties[fieldName] = value;
+                        _this.m_jsbEntity.save(function (err) {
+                            if (err) {
+                                var oldLockValue = _this.m_storageLock;
+                                _this.m_storageLock = true;
+                                obsVar(_this.m_oldValues.getValue(fieldName));
+                                _this.m_storageLock = oldLockValue;
+                            }
+                        });
+                    }
+                }, this);
+            };
+            JSBridgeEntityWriter.prototype.save = function () {
+            };
+            return JSBridgeEntityWriter;
+        }());
     })(Service = RemoteTrainer.Service || (RemoteTrainer.Service = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=JSBridgeProvider.js.map

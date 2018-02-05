@@ -4,7 +4,7 @@
         private m_exercises: Data.Exercise[];
         private m_workoutTemplates: Data.WorkoutTemplate[];
 
-        public loadData(onLoaded: (categories: Data.Category[], exercises: Data.Exercise[], workouts: Data.WorkoutTemplate[]) => void): void {
+        public initialize(onLoaded: (categories: Data.Category[], exercises: Data.Exercise[], workouts: Data.WorkoutTemplate[]) => void): void {
             this._loadCategories(() => this._loadExercises(() => this._loadTemplates(() => {
                 onLoaded(this.m_categories, this.m_exercises, this.m_workoutTemplates);
             })));
@@ -71,7 +71,7 @@
                 workoutEntities => {
                     if (workoutEntities) {
                         for (var i = 0; i < workoutEntities.length; i++) {
-                            this._loadWorkout(workoutEntities[i], workout => {
+                            this._loadWorkoutTemplate(workoutEntities[i], workout => {
                                 this.m_workoutTemplates.push(workout);
                                 if (this.m_workoutTemplates.length === workoutEntities.length)
                                     onLoaded();
@@ -82,21 +82,21 @@
                 err => MobileCRM.bridge.alert("Error getting workout templates: " + err), this);
         }
 
-        private _loadWorkout(workoutEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (workout: Data.WorkoutTemplate) => void): void {
+        private _loadWorkoutTemplate(workoutEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (workout: Data.WorkoutTemplate) => void): void {
             let workout = new Data.WorkoutTemplate();
             workout.id = workoutEntity.id;
             workout.name = workoutEntity.properties.name;
             workout.description = workoutEntity.properties.description;
 
             // load workout sets
-            this._loadSets(workout.id, sets => {
+            this._loadSetTemplates(workout.id, sets => {
                 workout.setTemplates = sets;
                 sets.forEach(s => s.parent = workout);
                 onLoaded(workout);
             });
         }
 
-        private _loadSets(workoutId: string, onLoaded: (sets: Data.SetTemplate[]) => void): void {
+        private _loadSetTemplates(workoutId: string, onLoaded: (sets: Data.SetTemplate[]) => void): void {
             let result: Data.SetTemplate[] = [];
             let entity = new MobileCRM.FetchXml.Entity("set_template");
             entity.addAttributes();
@@ -109,7 +109,7 @@
                 setEntities => {
                     if (setEntities) {
                         for (var i = 0; i < setEntities.length; i++) {
-                            this._loadSet(setEntities[i], set => {
+                            this._loadSetTemplate(setEntities[i], set => {
                                 result.push(set);
                                 if (result.length === setEntities.length)
                                     onLoaded(result);
@@ -120,20 +120,20 @@
                 err => MobileCRM.bridge.alert("Error getting set templates: " + err), this);
         }
 
-        private _loadSet(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.SetTemplate) => void): void {
+        private _loadSetTemplate(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.SetTemplate) => void): void {
             let set = new Data.SetTemplate();
             set.id = setEntity.id;
             set.order = setEntity.properties.order;
 
             // load workout sets
-            this._loadSeries(set.id, series => {
+            this._loadSerieTemplates(set.id, series => {
                 set.serieTemplates = series;
                 series.forEach(s => s.parent = set);
                 onLoaded(set);
             });
         }
 
-        private _loadSeries(setId: string, onLoaded: (sets: Data.SerieTemplate[]) => void): void {
+        private _loadSerieTemplates(setId: string, onLoaded: (sets: Data.SerieTemplate[]) => void): void {
             let result: Data.SerieTemplate[] = [];
             let entity = new MobileCRM.FetchXml.Entity("serie_template");
             entity.addAttributes();
@@ -159,5 +159,154 @@
                 },
                 err => MobileCRM.bridge.alert("Error getting serie templates: " + err), this);
         }
+
+        public loadWorkout(workoutId: string, onLoaded: (workout: Data.Workout) => void): void {
+            let entity = new MobileCRM.FetchXml.Entity("workout");
+            entity.addAttributes();
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where("id", "eq", workoutId);
+            let fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities",
+                entity => {
+                    let result = new Data.Workout();
+                    result.id = entity[0].id;
+                    result.name = entity[0].properties.name;
+                    result.description = entity[0].properties.comments;
+                    //result.uiState(entity.properties[0].statuscode);
+                    if (entity[0].properties.started_on)
+                        result.uiStartedOn(new Date(entity[0].properties.started_on).getTime());
+                    if (entity[0].properties.finished_on)
+                        result.uiFinishedOn(new Date(entity[0].properties.finished_on).getTime());
+
+                    this._loadSets(result.id, sets => {
+                        if (sets)
+                            sets.forEach(set => result.addSet(set));
+
+                        onLoaded(result);
+                    });
+                },
+                err => MobileCRM.bridge.alert("Error getting workout: " + err),
+                this);
+        }
+
+
+        private _loadSets(workoutId: string, onLoaded: (sets: Data.Set[]) => void): void {
+            let result: Data.Set[] = [];
+            let entity = new MobileCRM.FetchXml.Entity("set");
+            entity.addAttributes();
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where("workout", "eq", workoutId);
+            entity.orderBy("order", false);
+
+            let fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities",
+                setEntities => {
+                    if (setEntities && setEntities.length > 0) {
+                        for (var i = 0; i < setEntities.length; i++) {
+                            this._loadSet(setEntities[i], set => {
+                                result.push(set);
+                                if (result.length === setEntities.length)
+                                    onLoaded(result);
+                            });
+                        }
+                    }
+                    else {
+                        onLoaded([]);
+                    }
+                },
+                err => MobileCRM.bridge.alert("Error getting sets: " + err), this);
+        }
+
+        private _loadSet(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.Set) => void): void {
+            let set = new Data.Set();
+            set.id = setEntity.id;
+            set.order = setEntity.properties.order;
+            set.entityWriter = new JSBridgeEntityWriter(setEntity);
+
+            // load workout sets
+            this._loadSeries(set.id, series => {
+                if (series)
+                    series.forEach(serie => set.addSerie(serie));
+
+                onLoaded(set);
+            });
+        }
+
+
+        private _loadSeries(setId: string, onLoaded: (sets: Data.Serie[]) => void): void {
+            let result: Data.Serie[] = [];
+            let entity = new MobileCRM.FetchXml.Entity("serie");
+            entity.addAttributes();
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where("setid", "eq", setId);
+            entity.orderBy("order", false);
+
+            let fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities",
+                serieEntities => {
+                    if (serieEntities && serieEntities.length > 0) {
+                        for (var i = 0; i < serieEntities.length; i++) {
+                            let serie = new Data.Serie();
+                            serie.id = serieEntities[i].id;
+                            serie.order = serieEntities[i].properties.order;
+                            serie.amount = serieEntities[i].properties.amount;
+                            serie.uiAmount(serie.amount);
+                            serie.reps = serieEntities[i].properties.reps;
+                            serie.uiReps(serie.reps);
+                            serie.exercise = this.m_exercises.firstOrDefault(exercise => exercise.id === serieEntities[i].properties.exercise.id);
+                            if (serieEntities[i].properties.started_on)
+                                serie.uiStartedOn(new Date(serieEntities[i].properties.started_on));
+                            if (serieEntities[i].properties.finished_on)
+                                serie.uiFinishedOn(new Date(serieEntities[i].properties.finished_on));
+
+                            serie.entityWriter = new JSBridgeEntityWriter(serieEntities[i]);
+                            result.push(serie);
+                        }
+                        onLoaded(result);
+                    }
+                    else {
+                        onLoaded([]);
+                    }
+                },
+                err => MobileCRM.bridge.alert("Error getting serie templates: " + err), this);
+        }
     }
+
+
+    class JSBridgeEntityWriter implements IEntityWriter {
+        private m_jsbEntity: any;// MobileCRM.DynamicEntity;
+        private m_storageLock: boolean;
+
+        private m_oldValues: Resco.Dictionary<string, any>;
+
+        constructor(entity: any/*MobileCRM.DynamicEntity*/) {
+            this.m_jsbEntity = entity;
+            this.m_oldValues = new Resco.Dictionary<string, any>();
+        }
+
+        public subscribeObservableForWriting<T>(obsVar: KnockoutObservable<T>, fieldName: string): void {
+            obsVar.subscribe(oldValue => {
+                this.m_oldValues.set(fieldName, oldValue);
+            }, this, "beforeChange");
+
+            obsVar.subscribe(value => {
+                if (!this.m_storageLock) {
+                    this.m_jsbEntity.properties[fieldName] = value;
+                    this.m_jsbEntity.save((err: string) => {
+                        if (err) {
+                            let oldLockValue = this.m_storageLock;
+                            this.m_storageLock = true;
+                            obsVar(this.m_oldValues.getValue(fieldName));
+                            this.m_storageLock = oldLockValue;
+                        }
+                    });
+                }
+            }, this, );
+        }
+
+        public save(): void {
+
+        }
+    }
+
 }

@@ -32,26 +32,27 @@ var RemoteTrainer;
             __extends(Workout, _super);
             function Workout(template) {
                 var _this = _super.call(this) || this;
-                template.copyTo(_this);
                 _this.uiState = ko.observable(WorkoutState.Ready);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
                 _this.sets = ko.observableArray();
-                var sets = _this.sets();
-                template.setTemplates.forEach(function (setTemplate, index) {
-                    var set = new Data.Set(setTemplate);
-                    set.parent = _this;
-                    set.order = index;
-                    sets.push(set);
-                    if (index > 0) {
-                        sets[index - 1].next = set;
-                        set.previous = sets[index - 1];
-                    }
-                }, _this);
+                if (template) {
+                    template.copyTo(_this);
+                    template.setTemplates.forEach(function (setTemplate) { return _this.addSet(new Data.Set(setTemplate)); }, _this);
+                }
                 _this.displayedSet = ko.observable();
-                _this.sets.valueHasMutated();
                 return _this;
             }
+            Workout.prototype.addSet = function (set) {
+                var index = this.sets().length;
+                set.parent = this;
+                set.order = index;
+                this.sets().push(set);
+                if (index > 0) {
+                    this.sets()[index - 1].next = set;
+                    set.previous = this.sets()[index - 1];
+                }
+            };
             Workout.prototype.start = function () {
                 this.uiStartedOn(Date.now());
                 this.displayedSet = ko.observable(this.sets()[0]);

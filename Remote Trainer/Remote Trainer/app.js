@@ -28,14 +28,19 @@ var RemoteTrainer;
         Program.prototype.runApplication = function () {
             var _this = this;
             this.m_dataProvider = new RemoteTrainer.Service.JSBridgeProvider();
-            this.m_dataProvider.loadData(function (categories, exercises, workouts) {
+            this.m_dataProvider.initialize(function (categories, exercises, workouts) {
                 _this._createDemoData();
                 _this.m_categories = categories;
                 _this.m_exercises = exercises;
                 _this.m_workoutTemplates = workouts;
-                _this.workout = ko.observable(new RemoteTrainer.Data.Workout(_this.m_workoutTemplates[0]));
-                _this.workout().start();
-                ko.applyBindings(_this);
+                _this.m_dataProvider.loadWorkout("333d06c6-32c4-4ee5-a38b-dae4b0d8e546", function (workout) {
+                    _this.workout = ko.observable(workout);
+                    _this.workout().start();
+                    ko.applyBindings(_this);
+                });
+                //this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplates[0]));
+                //this.workout().start();
+                //ko.applyBindings(this);
             });
         };
         Program.prototype.onTabItemClicked = function (itemName) {

@@ -36,13 +36,14 @@ var RemoteTrainer;
             __extends(Serie, _super);
             function Serie(template) {
                 var _this = _super.call(this) || this;
-                template.copyTo(_this);
-                _this.uiAmount = ko.observable(template.amount);
+                if (template)
+                    template.copyTo(_this);
+                _this.uiAmount = ko.observable(template ? template.amount : 0);
                 _this.uiAmountHasFocus = ko.observable(false);
                 _this.uiAmountHasFocus.subscribe(function (hasFocus) {
                     // FIXME: validate value
                 }, _this);
-                _this.uiReps = ko.observable(template.reps);
+                _this.uiReps = ko.observable(template ? template.reps : 0);
                 _this.uiRepsHasFocus = ko.observable(false);
                 _this.uiRepsHasFocus.subscribe(function (hasFocus) {
                     // FIXME: validate value
@@ -74,7 +75,6 @@ var RemoteTrainer;
                     var diffLabel = _this.uiDifficulty();
                     return Serie.difficulties.indexOf(diffLabel) + 1;
                 }, _this);
-                _this.exercise = template.exercise;
                 return _this;
             }
             Serie.prototype.activate = function () {
@@ -171,6 +171,23 @@ var RemoteTrainer;
             Serie.prototype._onDurationTimer = function (context) {
                 this.uiFinishedOn(new Date());
             };
+            Object.defineProperty(Serie.prototype, "entityWriter", {
+                get: function () {
+                    return this.m_entityWriter;
+                },
+                set: function (value) {
+                    if (value !== this.m_entityWriter) {
+                        // FIXME: unsubcribe old writer
+                        this.m_entityWriter = value;
+                        if (this.m_entityWriter) {
+                            this.m_entityWriter.subscribeObservableForWriting(this.uiAmount, "amount");
+                            this.m_entityWriter.subscribeObservableForWriting(this.uiReps, "reps");
+                        }
+                    }
+                },
+                enumerable: true,
+                configurable: true
+            });
             Serie.difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
             return Serie;
         }(SerieTemplate));

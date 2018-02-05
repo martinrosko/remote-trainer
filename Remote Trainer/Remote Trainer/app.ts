@@ -36,16 +36,22 @@
         public runApplication() {
             this.m_dataProvider = new Service.JSBridgeProvider();
 
-            this.m_dataProvider.loadData((categories, exercises, workouts) => {
+            this.m_dataProvider.initialize((categories, exercises, workouts) => {
                 this._createDemoData();
                 this.m_categories = categories;
                 this.m_exercises = exercises;
                 this.m_workoutTemplates = workouts;
 
-                this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplates[0]));
-                this.workout().start();
-                ko.applyBindings(this);
-            })
+                this.m_dataProvider.loadWorkout("333d06c6-32c4-4ee5-a38b-dae4b0d8e546", workout => {
+                    this.workout = ko.observable(workout);
+                    this.workout().start();
+                    ko.applyBindings(this);
+                });
+
+                //this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplates[0]));
+                //this.workout().start();
+                //ko.applyBindings(this);
+           });
         }
 
         public onTabItemClicked(itemName: string): void {

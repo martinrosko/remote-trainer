@@ -49,24 +49,28 @@
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
-        constructor(template: SerieTemplate) {
+        constructor(template?: SerieTemplate) {
             super();
-            template.copyTo(this);
+            if (template)
+                template.copyTo(this);
 
-            this.uiAmount = ko.observable<number>(template.amount);
+            this.uiAmount = ko.observable<number>(template ? template.amount : 0);
+ 
             this.uiAmountHasFocus = ko.observable<boolean>(false);
             this.uiAmountHasFocus.subscribe(hasFocus => {
                 // FIXME: validate value
             }, this);
 
-            this.uiReps = ko.observable<number>(template.reps);
+            this.uiReps = ko.observable<number>(template ? template.reps : 0);
+
             this.uiRepsHasFocus = ko.observable<boolean>(false);
             this.uiRepsHasFocus.subscribe(hasFocus => {
                 // FIXME: validate value
             }, this);
 
             this.uiDifficulty = ko.observable<string>(Serie.difficulties[3]);
-			this.uiStatus = ko.observable(SerieStatus.Queued);
+
+            this.uiStatus = ko.observable(SerieStatus.Queued);
 			this.uiStatus.subscribe(value => {
 				if (this.parent)
 					this.parent.serieStatusChanged(this, value);
@@ -96,8 +100,6 @@
                 var diffLabel = this.uiDifficulty();
                 return Serie.difficulties.indexOf(diffLabel) + 1;
             }, this);
-
-            this.exercise = template.exercise;
         }
 
 		public activate(): void {
@@ -217,6 +219,21 @@
 
         private m_countDownTimer: GlobalTimer;
         private m_durationTimer: GlobalTimer;
+
+        private m_entityWriter: Service.IEntityWriter;
+        public get entityWriter(): Service.IEntityWriter {
+            return this.m_entityWriter;
+        }
+        public set entityWriter(value: Service.IEntityWriter) {
+            if (value !== this.m_entityWriter) {
+                // FIXME: unsubcribe old writer
+                this.m_entityWriter = value;
+                if (this.m_entityWriter) {
+                    this.m_entityWriter.subscribeObservableForWriting(this.uiAmount, "amount");
+                    this.m_entityWriter.subscribeObservableForWriting(this.uiReps, "reps");
+                }
+            }
+        }
     }
 
     export enum SerieStatus {
