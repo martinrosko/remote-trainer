@@ -59,14 +59,7 @@ var RemoteTrainer;
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
                 _this.uiOptionsPanelState = ko.observable();
                 _this.uiCountDown = ko.observable();
-                _this.duration = ko.computed(function () {
-                    var started = _this.uiStartedOn();
-                    var finished = _this.uiFinishedOn();
-                    if (started && finished) {
-                        return Math.round((finished.getTime() - started.getTime()) / 1000);
-                    }
-                    return -1;
-                });
+                _this.duration = ko.observable(0);
                 _this.uiDuration = ko.computed(function () {
                     var duration = _this.duration();
                     return duration >= 0 ? RemoteTrainer.Program.instance.spanToTimeLabel(duration) : "";
@@ -95,7 +88,7 @@ var RemoteTrainer;
                         // if not counting down already -> start countdown
                         var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
                         if (timerIndex < 0) {
-                            this.uiCountDown(5);
+                            this.uiCountDown(10);
                             this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
                             this.m_countDownTimer = new RemoteTrainer.GlobalTimer();
                             this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
@@ -111,7 +104,7 @@ var RemoteTrainer;
                         this.uiStatus(SerieStatus.Finished);
                         this.uiOptionsPanelState(OptionPanelState.Closed);
                         this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
-                        this.uiFinishedOn(new Date());
+                        this.uiFinishedOn(moment(this.uiStartedOn()).add(this.duration(), "second").toDate());
                         // unsubscribe the duration timer
                         var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
                         if (timerIndex >= 0)
@@ -155,7 +148,7 @@ var RemoteTrainer;
                 this.uiStatus(SerieStatus.Running);
                 var now = new Date();
                 this.uiStartedOn(now);
-                this.uiFinishedOn(now);
+                this.duration(0);
                 // stop current break;
                 this.parent.stopBreak(this.order);
                 // subscribe duration timer to global timer
@@ -169,25 +162,8 @@ var RemoteTrainer;
                     this._stopCountDown();
             };
             Serie.prototype._onDurationTimer = function (context) {
-                this.uiFinishedOn(new Date());
+                this.duration(this.duration() + 1);
             };
-            Object.defineProperty(Serie.prototype, "entityWriter", {
-                get: function () {
-                    return this.m_entityWriter;
-                },
-                set: function (value) {
-                    if (value !== this.m_entityWriter) {
-                        // FIXME: unsubcribe old writer
-                        this.m_entityWriter = value;
-                        if (this.m_entityWriter) {
-                            this.m_entityWriter.subscribeObservableForWriting(this.uiAmount, "amount");
-                            this.m_entityWriter.subscribeObservableForWriting(this.uiReps, "reps");
-                        }
-                    }
-                },
-                enumerable: true,
-                configurable: true
-            });
             Serie.difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
             return Serie;
         }(SerieTemplate));

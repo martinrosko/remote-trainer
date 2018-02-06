@@ -32,7 +32,7 @@ var RemoteTrainer;
             __extends(Workout, _super);
             function Workout(template) {
                 var _this = _super.call(this) || this;
-                _this.uiState = ko.observable(WorkoutState.Ready);
+                _this.uiStatus = ko.observable(WorkoutStatus.Ready);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
                 _this.sets = ko.observableArray();
@@ -64,12 +64,13 @@ var RemoteTrainer;
             return Workout;
         }(WorkoutTemplate));
         Data.Workout = Workout;
-        var WorkoutState;
-        (function (WorkoutState) {
-            WorkoutState[WorkoutState["Ready"] = 0] = "Ready";
-            WorkoutState[WorkoutState["Running"] = 1] = "Running";
-            WorkoutState[WorkoutState["Finished"] = 2] = "Finished";
-        })(WorkoutState = Data.WorkoutState || (Data.WorkoutState = {}));
+        var WorkoutStatus;
+        (function (WorkoutStatus) {
+            WorkoutStatus[WorkoutStatus["Ready"] = 0] = "Ready";
+            WorkoutStatus[WorkoutStatus["Running"] = 1] = "Running";
+            WorkoutStatus[WorkoutStatus["Finished"] = 2] = "Finished";
+            WorkoutStatus[WorkoutStatus["Paused"] = 3] = "Paused";
+        })(WorkoutStatus = Data.WorkoutStatus || (Data.WorkoutStatus = {}));
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=workout.js.map

@@ -51,7 +51,7 @@
             <div class="tabControl">
                 <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Workout</h2></div>
                 <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Set</h2></div>
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Serie'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Serie</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Overview'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Overview</h2></div>
             </div>
             <div class="content">
                 <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
@@ -71,7 +71,7 @@
         </div>
         <div class="set">
             <!-- ko foreach: exercises -->
-            <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black" data-bind="style: { backgroundColor: category.colorDark }">
+            <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark }, click: $parent.show.bind($parent)">
                 <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
                 <!-- ko foreach: $parent.series -->
                 <!-- ko if: exercise === $parent -->
@@ -213,8 +213,18 @@
         </div>
     </script>
 
-    <script id="tmplSerieDetails" type="text/html">
-        Serie details
+    <script id="tmplOverview" type="text/html">
+        <!-- ko with: workout() -->
+            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Ready -->
+            <div data-bind="click: start">Start Workout</div>
+            <!-- /ko -->
+            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Paused -->
+            <div data-bind="click: continue">Continue Workout</div>
+            <!-- /ko -->
+            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running -->
+            <div data-bind="click: pause">Pause Workout</div> | <div data-bind="click: stop">Finish Workout</div>
+            <!-- /ko -->
+        <!-- /ko -->
     </script>
 
 

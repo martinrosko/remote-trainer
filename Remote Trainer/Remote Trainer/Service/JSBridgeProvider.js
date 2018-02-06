@@ -223,7 +223,13 @@ var RemoteTrainer;
                                 serie.uiStartedOn(new Date(serieEntities[i].properties.started_on));
                             if (serieEntities[i].properties.finished_on)
                                 serie.uiFinishedOn(new Date(serieEntities[i].properties.finished_on));
-                            serie.entityWriter = new JSBridgeEntityWriter(serieEntities[i]);
+                            var entityWriter = new JSBridgeEntityWriter(serieEntities[i]);
+                            entityWriter.subscribeObservableForWriting(serie.uiAmount, "amount");
+                            entityWriter.subscribeObservableForWriting(serie.uiReps, "reps");
+                            entityWriter.subscribeObservableForWriting(serie.difficulty, "difficulty");
+                            entityWriter.subscribeObservableForWriting(serie.uiStartedOn, "started_on");
+                            entityWriter.subscribeObservableForWriting(serie.uiFinishedOn, "finished_on");
+                            entityWriter.subscribeObservableForWriting(serie.uiStatus, "statuscode");
                             result.push(serie);
                         }
                         onLoaded(result);

@@ -1,4 +1,6 @@
 ﻿module RemoteTrainer {
+    export const DEMODATA = false;
+
     export class GlobalTimer {
         public fn: (context: any) => void;
         public context: any;
@@ -34,24 +36,28 @@
         }
 
         public runApplication() {
-            this.m_dataProvider = new Service.JSBridgeProvider();
-
-            this.m_dataProvider.initialize((categories, exercises, workouts) => {
+            if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
-                this.m_categories = categories;
-                this.m_exercises = exercises;
-                this.m_workoutTemplates = workouts;
+                this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+                ko.applyBindings(this);
+            }
+            else {
+                this.m_dataProvider = new Service.JSBridgeProvider();
 
-                this.m_dataProvider.loadWorkout("333d06c6-32c4-4ee5-a38b-dae4b0d8e546", workout => {
-                    this.workout = ko.observable(workout);
-                    this.workout().start();
-                    ko.applyBindings(this);
+                this.m_dataProvider.initialize((categories, exercises, workouts) => {
+                    this._createDemoData();
+                    this.m_categories = categories;
+                    this.m_exercises = exercises;
+                    this.m_workoutTemplates = workouts;
+
+                    this.m_dataProvider.loadWorkout("4a7701fe-d2b2-46e7-a499-1894b20e2194", workout => {
+                        this.workout = ko.observable(workout);
+                        this.workout().start();
+                        ko.applyBindings(this);
+                    });
+
                 });
-
-                //this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplates[0]));
-                //this.workout().start();
-                //ko.applyBindings(this);
-           });
+            }
         }
 
         public onTabItemClicked(itemName: string): void {
@@ -66,15 +72,12 @@
                     this.uiFooterTemplateName("tmplSetDetailsFooter");
                     this.uiSelectedTabIndex(1);
                     break;
-                case "Serie":
-                    this.uiContentTemplateName("tmplSerieDetails");
+                case "Overview":
+                    this.uiContentTemplateName("tmplOverview");
+                    this.uiFooterTemplateName("");
                     this.uiSelectedTabIndex(2);
                     break;
             }
-        }
-
-        private _loadTemplates(): void {
-            ;
         }
 
         private _createDemoData() {

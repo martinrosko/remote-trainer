@@ -23,7 +23,7 @@
 
     export class Workout extends WorkoutTemplate {
         public sets: KnockoutObservableArray<Set>;
-        public uiState: KnockoutObservable<WorkoutState>;
+        public uiStatus: KnockoutObservable<WorkoutStatus>;
         public uiStartedOn: KnockoutObservable<number>;
         public uiFinishedOn: KnockoutObservable<number>;
 
@@ -32,7 +32,7 @@
         constructor(template?: WorkoutTemplate) {
             super();
 
-            this.uiState = ko.observable(WorkoutState.Ready);
+            this.uiStatus = ko.observable(WorkoutStatus.Ready);
             this.uiStartedOn = ko.observable<number>();
             this.uiFinishedOn = ko.observable<number>();
             this.sets = ko.observableArray<Set>();
@@ -68,9 +68,10 @@
         }
     }
 
-    export enum WorkoutState {
+    export enum WorkoutStatus {
         Ready,
         Running,
-        Finished
+        Finished,
+        Paused
     }
 }

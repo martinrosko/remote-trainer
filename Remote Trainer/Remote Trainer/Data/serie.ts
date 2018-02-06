@@ -31,7 +31,7 @@
         public uiStatus: KnockoutObservable<SerieStatus>;
         public uiStartedOn: KnockoutObservable<Date>;
         public uiFinishedOn: KnockoutObservable<Date>;
-        public duration: KnockoutComputed<number>;
+        public duration: KnockoutObservable<number>;
         public uiDuration: KnockoutComputed<string>;
         public uiAmount: KnockoutObservable<number>;
         public uiAmountHasFocus: KnockoutObservable<boolean>
@@ -82,14 +82,7 @@
             this.uiOptionsPanelState = ko.observable<OptionPanelState>();
             this.uiCountDown = ko.observable<number>();
 
-            this.duration = ko.computed<number>(() => {
-                var started = this.uiStartedOn();
-                var finished = this.uiFinishedOn();
-                if (started && finished) {
-                    return Math.round((finished.getTime() - started.getTime()) / 1000);
-                }
-                return -1;
-            });
+            this.duration = ko.observable<number>(0);
 
             this.uiDuration = ko.computed(() => {
                 let duration = this.duration();
@@ -124,7 +117,7 @@
                     // if not counting down already -> start countdown
                     let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
                     if (timerIndex < 0) {
-                        this.uiCountDown(5);
+                        this.uiCountDown(10);
                         this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
 
                         this.m_countDownTimer = new GlobalTimer();
@@ -142,7 +135,7 @@
                     this.uiStatus(SerieStatus.Finished);
                     this.uiOptionsPanelState(OptionPanelState.Closed);
                     this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
-                    this.uiFinishedOn(new Date());
+                    this.uiFinishedOn(moment(this.uiStartedOn()).add(this.duration(), "second").toDate());
 
                     // unsubscribe the duration timer
                     let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
@@ -196,7 +189,7 @@
             this.uiStatus(SerieStatus.Running);
             var now = new Date();
             this.uiStartedOn(now);
-            this.uiFinishedOn(now);
+            this.duration(0);
 
             // stop current break;
             (<Set>this.parent).stopBreak(this.order);
@@ -214,26 +207,11 @@
         }
 
         private _onDurationTimer(context: any): void {
-            this.uiFinishedOn(new Date());
+            this.duration(this.duration() + 1);
         }
 
         private m_countDownTimer: GlobalTimer;
         private m_durationTimer: GlobalTimer;
-
-        private m_entityWriter: Service.IEntityWriter;
-        public get entityWriter(): Service.IEntityWriter {
-            return this.m_entityWriter;
-        }
-        public set entityWriter(value: Service.IEntityWriter) {
-            if (value !== this.m_entityWriter) {
-                // FIXME: unsubcribe old writer
-                this.m_entityWriter = value;
-                if (this.m_entityWriter) {
-                    this.m_entityWriter.subscribeObservableForWriting(this.uiAmount, "amount");
-                    this.m_entityWriter.subscribeObservableForWriting(this.uiReps, "reps");
-                }
-            }
-        }
     }
 
     export enum SerieStatus {

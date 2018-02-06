@@ -183,6 +183,11 @@
                 Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
         }
 
+        public show(): void {
+            this.parent.displayedSet(this);
+            Program.instance.onTabItemClicked("Set");
+        }
+
         public showPrevious(): void {
             (<Workout>this.parent).displayedSet(this.previous);
         }

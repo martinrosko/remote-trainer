@@ -149,6 +149,10 @@ var RemoteTrainer;
                 if (runningTimerIndex >= 0)
                     RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
             };
+            Set.prototype.show = function () {
+                this.parent.displayedSet(this);
+                RemoteTrainer.Program.instance.onTabItemClicked("Set");
+            };
             Set.prototype.showPrevious = function () {
                 this.parent.displayedSet(this.previous);
             };
