@@ -54,22 +54,24 @@ var RemoteTrainer;
                 }
             };
             Workout.prototype.start = function () {
+                this.uiStatus(WorkoutStatus.Running);
                 this.uiStartedOn(Date.now());
                 this.displayedSet = ko.observable(this.sets()[0]);
                 this.displayedSet().start();
             };
             Workout.prototype.stop = function () {
                 this.uiFinishedOn(Date.now());
+                this.uiStatus(WorkoutStatus.Finished);
             };
             return Workout;
         }(WorkoutTemplate));
         Data.Workout = Workout;
         var WorkoutStatus;
         (function (WorkoutStatus) {
-            WorkoutStatus[WorkoutStatus["Ready"] = 0] = "Ready";
-            WorkoutStatus[WorkoutStatus["Running"] = 1] = "Running";
+            WorkoutStatus[WorkoutStatus["Ready"] = 1] = "Ready";
             WorkoutStatus[WorkoutStatus["Finished"] = 2] = "Finished";
-            WorkoutStatus[WorkoutStatus["Paused"] = 3] = "Paused";
+            WorkoutStatus[WorkoutStatus["Running"] = 10000] = "Running";
+            WorkoutStatus[WorkoutStatus["Paused"] = 10001] = "Paused";
         })(WorkoutStatus = Data.WorkoutStatus || (Data.WorkoutStatus = {}));
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));

@@ -44,17 +44,15 @@
 
     <script id="tmplApplication" type="text/html">
         <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
-            <div class="header">
-                00:43:14 (20% Done)
-                End at 12:30 (in 15minute(s))
-            </div>
             <div class="tabControl">
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Workout</h2></div>
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Set</h2></div>
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Overview'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Overview</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Overview'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Overview</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Workout</h2></div>
+                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Set</h2></div>
             </div>
             <div class="content">
-                <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
+                <div style="background-image: url('Images/background.jpg'); background-repeat:repeat-y; padding: 0px; height: 100%">
+                    <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
+                </div>
             </div>
             <!-- ko if: uiFooterTemplateName() -->
             <div style="width: 100%; text-align: center; background: #333333; color: white; border-bottom: solid 1px black">
@@ -66,10 +64,10 @@
 
     <script id="tmplWorkoutDetails" type="text/html">
         <!-- ko foreach: workout().sets -->
-        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
             <!-- ko if: breaks[0]() -->Break: <span class="highlight" data-bind="text: breaks[0]" /><!-- /ko -->&nbsp;
         </div>
-        <div class="set">
+        <div class="set" style="padding: 10px">
             <!-- ko foreach: exercises -->
             <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark }, click: $parent.show.bind($parent)">
                 <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
@@ -108,10 +106,10 @@
 
     <script id="tmplSetDetails" type="text/html">
         <!-- ko with: workout().displayedSet() -->
-        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
             Break: <span class="highlight" data-bind="text: breaks[0]" />
         </div>
-        <div class="set">
+        <div class="set" style="padding: 10px">
             <!-- ko foreach: series -->
             <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
             <!-- /ko -->
@@ -133,10 +131,10 @@
 
 
     <script id="tmplSerie" type="text/html">
-        <div class="serieHeader" data-bind="style: { backgroundColor: exercise.category.colorDark }">
+        <div class="serieHeader" data-bind="style: { backgroundColor: exercise.category.colorDark }" style="border: solid 1px black; border-bottom: 0px">
             <div data-bind="text: exercise.name" style="padding: 5px; font-weight: bold"></div>
         </div>
-        <div class="serie">
+        <div class="serie" style="border: solid 1px black; border-top: dashed 1px black">
             <div class="optionPanel" data-bind="visible: uiOptionsPanelState() === RemoteTrainer.Data.OptionPanelState.Opened">
                 <!-- ko if: uiOptionsContentTemplate() -->
                     <!-- ko template: { name: uiOptionsContentTemplate } --><!-- /ko -->
@@ -174,7 +172,7 @@
            </div>
         </div>
         <!-- ko if: order < parent.series().length - 1 || parent.uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-        <div class="break" data-bind="style: {borderBottom: (order < parent.series().length - 1 ? 'solid 1px black' : '0px')}" style="padding: 5px; box-sizing: border-box; background: white; font-size: 12px; text-align: center; background: #eeeeee">
+        <div class="break" style="padding: 5px; box-sizing: border-box; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
             <!-- ko if: parent.breaks[order + 1]() -->Break: <span class="highlight" data-bind="text: parent.breaks[order + 1]" /><!-- /ko -->&nbsp;
         </div>
         <!-- /ko -->
@@ -215,15 +213,43 @@
 
     <script id="tmplOverview" type="text/html">
         <!-- ko with: workout() -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Ready -->
-            <div data-bind="click: start">Start Workout</div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Paused -->
-            <div data-bind="click: continue">Continue Workout</div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running -->
-            <div data-bind="click: pause">Pause Workout</div> | <div data-bind="click: stop">Finish Workout</div>
-            <!-- /ko -->
+        <div style="padding: 200px 20px; height: 100%">
+            <div style="position: absolute; top: 250px; left: 20px; width: calc(100% - 40px); background: white; opacity: 0.85; border-radius: 25px; height: calc(100% - 500px); ">
+            </div>
+            <div style="position: absolute; top: 250px; left: 20px; width: calc(100% - 40px); border-radius: 25px; height: calc(100% - 500px); border: solid 1px black; padding: 20px; text-align: center">
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Ready -->
+                <span class="bigestDigit">00:00:00</span><br /><br />
+                <br />
+                <img src="Images/serieStatusReady.png" style="height: 10em" data-bind="click: start" />
+                <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running -->
+                <span class="bigestDigit">00:00:00</span><br />
+                <br />
+                <br />
+                <div style="text-align: left">
+                    <span style="font-size: 1em; font-weight: bold; font-style: normal">Completion:</span>
+                    <div style="background: white; width: 100%; height: 30px; position: relative; border: solid 1px black">
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #4499dd)"></div>
+                        <div style="position: absolute; right: 0px; top: 0px; height: 100%; width: 80%; background: white;"></div>
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold">20%</div>
+                    </div>
+                    <br />
+                    <span style="font-size: 1em; font-weight: bold; font-style: normal">Average Difficulty:</span>
+                    <div style="background: transparent; width: 100%; height: 30px; position: relative; border: solid 1px black">
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #aa0000);"></div>
+                        <div style="position: absolute; right: 0px; top: 0px; height: 100%; width: 20%; background: white;"></div>
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold">4.0</div>
+                    </div>
+                    <br />
+                    <br />
+                    <div style="width: 100%; height: 30px">
+                        <div style="height: 30px; line-height: 30px; display: inline-block; width: 50%; padding: 0px; margin: 0px; box-sizing: border-box"><span>Estimated End:</span><span style="font-size: 1em; font-weight: bold; font-style: normal">10:12:00</span>
+                        </div><div style="height: 30px; line-height: 30px; display: inline-block; width: 50%; padding: 0px; margin: 0px; box-sizing: border-box; text-align: right"><img src="Images/serieStatusRunning.png" style="height:1.2em" /> <span data-bind="click: stop">Finish Workout</span></div>
+                   </div>
+                </div>
+                <!-- /ko -->
+            </div>
+        </div>
         <!-- /ko -->
     </script>
 

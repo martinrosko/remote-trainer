@@ -1,6 +1,6 @@
 var RemoteTrainer;
 (function (RemoteTrainer) {
-    RemoteTrainer.DEMODATA = false;
+    RemoteTrainer.DEMODATA = true;
     var GlobalTimer = (function () {
         function GlobalTimer() {
         }
@@ -11,7 +11,7 @@ var RemoteTrainer;
         function Program() {
             this.GlobalTimer = [];
             this.uiSelectedTabIndex = ko.observable(0);
-            this.uiContentTemplateName = ko.observable("tmplWorkoutDetails");
+            this.uiContentTemplateName = ko.observable("tmplOverview");
             this.uiFooterTemplateName = ko.observable();
             window.setInterval(function () {
                 Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
@@ -31,18 +31,23 @@ var RemoteTrainer;
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
+                //this.workout().uiStartedOn(new Date(2018, 1, 7, 21, 0, 0).getTime());
+                //this.workout().uiStatus(Data.WorkoutStatus.Running);
+                //this.workout().sets()[0].series()[0].uiStatus(Data.SerieStatus.Finished);
+                //this.workout().sets()[0].series()[0].uiStartedOn(new Date(2018, 1, 7, 21, 1, 0));
+                //this.workout().sets()[0].series()[0].uiFinishedOn(new Date(2018, 1, 7, 21, 2, 0));
                 ko.applyBindings(this);
             }
             else {
                 this.m_dataProvider = new RemoteTrainer.Service.JSBridgeProvider();
                 this.m_dataProvider.initialize(function (categories, exercises, workouts) {
-                    _this._createDemoData();
                     _this.m_categories = categories;
                     _this.m_exercises = exercises;
                     _this.m_workoutTemplates = workouts;
-                    _this.m_dataProvider.loadWorkout("4a7701fe-d2b2-46e7-a499-1894b20e2194", function (workout) {
+                    //this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "Moj Workout", new Date());
+                    _this.m_dataProvider.loadWorkout("9cad0c63-9d20-4b8a-8fbd-f8c7e18bb634", function (workout) {
                         _this.workout = ko.observable(workout);
-                        _this.workout().start();
+                        //this.workout().start();
                         ko.applyBindings(_this);
                     });
                 });
@@ -50,19 +55,19 @@ var RemoteTrainer;
         };
         Program.prototype.onTabItemClicked = function (itemName) {
             switch (itemName) {
+                case "Overview":
+                    this.uiContentTemplateName("tmplOverview");
+                    this.uiFooterTemplateName("");
+                    this.uiSelectedTabIndex(0);
+                    break;
                 case "Workout":
                     this.uiContentTemplateName("tmplWorkoutDetails");
                     this.uiFooterTemplateName("");
-                    this.uiSelectedTabIndex(0);
+                    this.uiSelectedTabIndex(1);
                     break;
                 case "Set":
                     this.uiContentTemplateName("tmplSetDetails");
                     this.uiFooterTemplateName("tmplSetDetailsFooter");
-                    this.uiSelectedTabIndex(1);
-                    break;
-                case "Overview":
-                    this.uiContentTemplateName("tmplOverview");
-                    this.uiFooterTemplateName("");
                     this.uiSelectedTabIndex(2);
                     break;
             }

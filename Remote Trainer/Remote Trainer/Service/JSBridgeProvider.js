@@ -159,6 +159,10 @@ var RemoteTrainer;
                     _this._loadSets(result.id, function (sets) {
                         if (sets)
                             sets.forEach(function (set) { return result.addSet(set); });
+                        var entityWriter = new JSBridgeEntityWriter(entity[0]);
+                        entityWriter.subscribeObservableForWriting(result.uiStartedOn, "started_on");
+                        entityWriter.subscribeObservableForWriting(result.uiFinishedOn, "finished_on");
+                        entityWriter.subscribeObservableForWriting(result.uiStatus, "statuscode");
                         onLoaded(result);
                     });
                 }, function (err) { return MobileCRM.bridge.alert("Error getting workout: " + err); }, this);
@@ -238,6 +242,55 @@ var RemoteTrainer;
                         onLoaded([]);
                     }
                 }, function (err) { return MobileCRM.bridge.alert("Error getting serie templates: " + err); }, this);
+            };
+            JSBridgeProvider.prototype.instantiateWorkout = function (workoutTemplate, workoutName, scheduledOn) {
+                var workoutEntity = new MobileCRM.DynamicEntity("workout");
+                workoutEntity.properties.name = workoutName;
+                workoutEntity.properties.description = workoutTemplate.description;
+                workoutEntity.save(function (error) {
+                    // note: scope (this) is newlycreated dynamic entity (workout)
+                    if (error) {
+                        MobileCRM.bridge.alert("Error instantiating workout: " + error);
+                    }
+                    else {
+                        // create sets
+                        workoutTemplate.setTemplates.forEach(function (setTemplate) {
+                            var setEntity = new MobileCRM.DynamicEntity("set");
+                            setEntity.properties.workout = new MobileCRM.Reference("workout", this.id, "");
+                            setEntity.properties.name = setTemplate.name;
+                            setEntity.properties.order = setTemplate.order;
+                            setEntity.save(function (error) {
+                                // note: scope (this) is newly created dynamic entity (set)
+                                if (error) {
+                                    MobileCRM.bridge.alert("Error instantiating set: " + error);
+                                }
+                                else {
+                                    // create series
+                                    setTemplate.serieTemplates.forEach(function (serieTemplate) {
+                                        var serieEntity = new MobileCRM.DynamicEntity("serie");
+                                        serieEntity.properties.setid = new MobileCRM.Reference("set", this.id, "");
+                                        serieEntity.properties.amount = serieTemplate.amount;
+                                        serieEntity.properties.exercise = new MobileCRM.Reference("exercise", serieTemplate.exercise.id, "");
+                                        serieEntity.properties.order = serieTemplate.order;
+                                        serieEntity.properties.reps = serieTemplate.reps;
+                                        serieEntity.save(function (error) {
+                                            if (error)
+                                                MobileCRM.bridge.alert("Error instantiating serie: " + error);
+                                        });
+                                    }, this);
+                                }
+                            });
+                        }, this);
+                        //schedule the newly creted workout
+                        var workoutScheduleEntity = new MobileCRM.DynamicEntity("workout_schedule");
+                        workoutScheduleEntity.properties.scheduledon = scheduledOn;
+                        workoutScheduleEntity.properties.workout = new MobileCRM.Reference("workout", this.id, "");
+                        workoutScheduleEntity.save(function (error) {
+                            if (error)
+                                MobileCRM.bridge.alert("Error creating workout schedule: " + error);
+                        });
+                    }
+                });
             };
             return JSBridgeProvider;
         }());

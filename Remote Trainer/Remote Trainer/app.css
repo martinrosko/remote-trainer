@@ -166,6 +166,11 @@ span.bigDigit {
     font-weight: bold;
 }
 
+span.bigestDigit {
+    font-size: 5.6em;
+    font-weight: bold;
+}
+
 span.annotation {
     font-size: 0.8em;
 }

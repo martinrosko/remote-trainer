@@ -1,42 +1,52 @@
-interface Bridge {
-	alert(msg: string): void;
-}
+declare namespace MobileCRM {
+    interface Bridge {
+        alert(msg: string): void;
+    }
 
-interface IEntity {
-    new(entityName: string): IEntity;
-    addAttributes(): void;
-    orderBy(attribute: string, descending: boolean): void;
-    filter: IFilter;
-}
+    interface EntityStatic {
+        new(entityName: string): EntityStatic;
+        addAttributes(): void;
+        orderBy(attribute: string, descending: boolean): void;
+        filter: FilterStatic;
+    }
 
-interface IFilter {
-    new(): IFilter;
-    where(attribute: string, operator: string, value: any): void;
-}
+    interface FilterStatic {
+        new(): FilterStatic;
+        where(attribute: string, operator: string, value: any): void;
+    }
 
-interface IFetch {
-    new(entity: IEntity, count?: number, page?: number): IFetch;
+    interface FetchStatic {
+        new(entity: EntityStatic, count?: number, page?: number): FetchStatic;
 
-    execute(resultType: string, success: (result: any) => void, error: (err: string) => void, scope?: any): void;
-}
+        execute(resultType: string, success: (result: any) => void, error: (err: string) => void, scope?: any): void;
+    }
 
-interface IFetchXml {
-    Entity: IEntity;
-    Fetch: IFetch;
-    Filter: IFilter;
-}
+    interface FetchXmlStatic {
+        Entity: EntityStatic;
+        Filter: FilterStatic;
+        Fetch: FetchStatic;
+    }
 
-interface IDynamicEntity {
+    interface DynamicEntityStatic {
+        new(entityName: string): DynamicEntityStatic;
+        id: string;
+        properties: any;
+        save(callback: (error: string) => void): void;
+    }
 
-}
+    interface ReferenceStatic {
+        new(target: string, id: string, name: string): ReferenceStatic;
+    }
 
-interface MobileCRMStatic {
-    bridge: Bridge;
-    FetchXml: IFetchXml;
-    DynamicEntity: IDynamicEntity;
+    export var FetchXml: FetchXmlStatic;
+    export var DynamicEntity: DynamicEntityStatic;
+    export interface DynamicEntity extends DynamicEntityStatic { }
+    export var Reference: ReferenceStatic;
+    export interface Reference extends ReferenceStatic { }
+
+    export var bridge: Bridge;
 }
 
 declare module "jsbridge" {
     export = MobileCRM;
 } 
-declare var MobileCRM: MobileCRMStatic;

@@ -1,5 +1,5 @@
 ﻿module RemoteTrainer {
-    export const DEMODATA = false;
+    export const DEMODATA = true;
 
     export class GlobalTimer {
         public fn: (context: any) => void;
@@ -26,7 +26,7 @@
 
         constructor() {
             this.uiSelectedTabIndex = ko.observable<number>(0);
-            this.uiContentTemplateName = ko.observable<string>("tmplWorkoutDetails");    
+            this.uiContentTemplateName = ko.observable<string>("tmplOverview");    
             this.uiFooterTemplateName = ko.observable<string>();
 
             window.setInterval(() => {
@@ -39,20 +39,28 @@
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+
+                //this.workout().uiStartedOn(new Date(2018, 1, 7, 21, 0, 0).getTime());
+                //this.workout().uiStatus(Data.WorkoutStatus.Running);
+
+                //this.workout().sets()[0].series()[0].uiStatus(Data.SerieStatus.Finished);
+                //this.workout().sets()[0].series()[0].uiStartedOn(new Date(2018, 1, 7, 21, 1, 0));
+                //this.workout().sets()[0].series()[0].uiFinishedOn(new Date(2018, 1, 7, 21, 2, 0));
                 ko.applyBindings(this);
             }
             else {
                 this.m_dataProvider = new Service.JSBridgeProvider();
 
                 this.m_dataProvider.initialize((categories, exercises, workouts) => {
-                    this._createDemoData();
                     this.m_categories = categories;
                     this.m_exercises = exercises;
                     this.m_workoutTemplates = workouts;
 
-                    this.m_dataProvider.loadWorkout("4a7701fe-d2b2-46e7-a499-1894b20e2194", workout => {
+                    //this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "Moj Workout", new Date());
+
+                    this.m_dataProvider.loadWorkout("9cad0c63-9d20-4b8a-8fbd-f8c7e18bb634", workout => {
                         this.workout = ko.observable(workout);
-                        this.workout().start();
+                        //this.workout().start();
                         ko.applyBindings(this);
                     });
 
@@ -62,19 +70,19 @@
 
         public onTabItemClicked(itemName: string): void {
             switch (itemName) {
+                case "Overview":
+                    this.uiContentTemplateName("tmplOverview");
+                    this.uiFooterTemplateName("");
+                    this.uiSelectedTabIndex(0);
+                    break;
                 case "Workout":
                     this.uiContentTemplateName("tmplWorkoutDetails");
                     this.uiFooterTemplateName("");
-                    this.uiSelectedTabIndex(0);
+                    this.uiSelectedTabIndex(1);
                     break;
                 case "Set":
                     this.uiContentTemplateName("tmplSetDetails");
                     this.uiFooterTemplateName("tmplSetDetailsFooter");
-                    this.uiSelectedTabIndex(1);
-                    break;
-                case "Overview":
-                    this.uiContentTemplateName("tmplOverview");
-                    this.uiFooterTemplateName("");
                     this.uiSelectedTabIndex(2);
                     break;
             }

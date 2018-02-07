@@ -182,6 +182,11 @@
                         if (sets)
                             sets.forEach(set => result.addSet(set));
 
+                        let entityWriter = new JSBridgeEntityWriter(entity[0]);
+                        entityWriter.subscribeObservableForWriting(result.uiStartedOn, "started_on");
+                        entityWriter.subscribeObservableForWriting(result.uiFinishedOn, "finished_on");
+                        entityWriter.subscribeObservableForWriting(result.uiStatus, "statuscode");
+
                         onLoaded(result);
                     });
                 },
@@ -277,6 +282,60 @@
                 },
                 err => MobileCRM.bridge.alert("Error getting serie templates: " + err), this);
         }
+
+        public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date): void {
+            let workoutEntity = new MobileCRM.DynamicEntity("workout");
+            workoutEntity.properties.name = workoutName;
+            workoutEntity.properties.description = workoutTemplate.description;
+
+            workoutEntity.save(function(error) {
+                // note: scope (this) is newlycreated dynamic entity (workout)
+                if (error) {
+                    MobileCRM.bridge.alert("Error instantiating workout: " + error);
+                }
+                else {
+                    // create sets
+                    workoutTemplate.setTemplates.forEach(function(setTemplate) {
+                        let setEntity = new MobileCRM.DynamicEntity("set");
+                        setEntity.properties.workout = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
+                        setEntity.properties.name = setTemplate.name;
+                        setEntity.properties.order = setTemplate.order;
+                        setEntity.save(function(error) {
+                            // note: scope (this) is newly created dynamic entity (set)
+                            if (error) {
+                                MobileCRM.bridge.alert("Error instantiating set: " + error);
+                            }
+                            else {
+                                // create series
+                                setTemplate.serieTemplates.forEach(function(serieTemplate) {
+                                    let serieEntity = new MobileCRM.DynamicEntity("serie");
+                                    serieEntity.properties.setid = new MobileCRM.Reference("set", (<MobileCRM.DynamicEntity><any>this).id, "");
+                                    serieEntity.properties.amount = serieTemplate.amount;
+                                    serieEntity.properties.exercise = new MobileCRM.Reference("exercise", serieTemplate.exercise.id, "");
+                                    serieEntity.properties.order = serieTemplate.order;
+                                    serieEntity.properties.reps = serieTemplate.reps;
+                                    serieEntity.save(error => {
+                                        if (error)
+                                            MobileCRM.bridge.alert("Error instantiating serie: " + error);
+                                    });
+                                   
+                                }, this);
+                            }
+                        });
+                    }, this);
+
+                    //schedule the newly creted workout
+                    let workoutScheduleEntity = new MobileCRM.DynamicEntity("workout_schedule");
+                    workoutScheduleEntity.properties.scheduledon = scheduledOn;
+                    workoutScheduleEntity.properties.workout = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
+
+                    workoutScheduleEntity.save(error => {
+                        if (error)
+                            MobileCRM.bridge.alert("Error creating workout schedule: " + error);
+                    });
+                }
+            });
+        }
     }
 
 
@@ -312,7 +371,6 @@
         }
 
         public save(): void {
-
         }
     }
 

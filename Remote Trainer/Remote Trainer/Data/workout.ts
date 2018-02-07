@@ -58,6 +58,7 @@
         }
 
         public start(): void {
+            this.uiStatus(WorkoutStatus.Running);
             this.uiStartedOn(Date.now());
             this.displayedSet = ko.observable<Data.Set>(this.sets()[0])
             this.displayedSet().start();
@@ -65,13 +66,14 @@
 
         public stop(): void {
             this.uiFinishedOn(Date.now());
+            this.uiStatus(WorkoutStatus.Finished);
         }
     }
 
     export enum WorkoutStatus {
-        Ready,
-        Running,
-        Finished,
-        Paused
+        Ready = 1,
+        Finished = 2,
+        Running = 10000,
+        Paused = 10001
     }
 }

@@ -1,6 +1,7 @@
 ﻿module RemoteTrainer.Data {
     export class SetTemplate {
         public id: string;
+        public name: string;
         public order: number;
         public serieTemplates: SerieTemplate[];
         public parent: WorkoutTemplate;
@@ -30,8 +31,6 @@
         public series: KnockoutObservableArray<Serie>;
         public exercises: KnockoutObservableArray<Exercise>;
         public breaks: KnockoutObservable<string>[];
-        public startedTimeSpan: KnockoutObservable<number>;
-        public finishedTimeSpan: KnockoutObservable<number>;
         public parent: Workout;
         public next: Set;
         public previous: Set;
@@ -74,9 +73,6 @@
                 }
                 return "";
             }, this);
-
-            this.startedTimeSpan = ko.observable<number>(0);
-            this.finishedTimeSpan = ko.observable<number>(0);
 
             this.duration = ko.observable(0);
 
@@ -165,19 +161,12 @@
                 this.stopBreak(index - 1);
         }
 
-        public onContinueClicked(): void {
-            if (this.next)
-                this.next.start();
-        }
-
         public start(): void {
             this.series()[0].uiStatus(SerieStatus.Ready);
-            this.startedTimeSpan(Date.now());
             this.startBreak(0);
         }
 
         public stop(): void {
-            this.finishedTimeSpan(Date.now());
             let runningTimerIndex = Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
             if (runningTimerIndex >= 0)
                 Program.instance.GlobalTimer.splice(runningTimerIndex, 1);

@@ -60,8 +60,6 @@ var RemoteTrainer;
                     }
                     return "";
                 }, _this);
-                _this.startedTimeSpan = ko.observable(0);
-                _this.finishedTimeSpan = ko.observable(0);
                 _this.duration = ko.observable(0);
                 _this.uiDurationLabel = ko.computed(function () {
                     var duration = _this.duration();
@@ -134,17 +132,11 @@ var RemoteTrainer;
                 else if (status === Data.SerieStatus.Running)
                     this.stopBreak(index - 1);
             };
-            Set.prototype.onContinueClicked = function () {
-                if (this.next)
-                    this.next.start();
-            };
             Set.prototype.start = function () {
                 this.series()[0].uiStatus(Data.SerieStatus.Ready);
-                this.startedTimeSpan(Date.now());
                 this.startBreak(0);
             };
             Set.prototype.stop = function () {
-                this.finishedTimeSpan(Date.now());
                 var runningTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
                 if (runningTimerIndex >= 0)
                     RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
