@@ -102,7 +102,7 @@
             serie.parent = this;
             serie.order = index;
 
-            this.series().push(serie);
+            this.series.push(serie);
             if (index > 0) {
                 this.series()[index - 1].next = serie;
                 serie.previous = this.series()[index - 1];

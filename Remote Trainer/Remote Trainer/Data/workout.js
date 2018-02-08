@@ -77,7 +77,7 @@ var RemoteTrainer;
                 var index = this.sets().length;
                 set.parent = this;
                 set.order = index;
-                this.sets().push(set);
+                this.sets.push(set);
                 if (index > 0) {
                     this.sets()[index - 1].next = set;
                     set.previous = this.sets()[index - 1];
