@@ -32,10 +32,9 @@
             window.setInterval(() => {
                 Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
             }, 1000);
-
         }
 
-        public runApplication() {
+        public runApplication(workoutId: string) {
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
@@ -56,13 +55,24 @@
                     this.m_exercises = exercises;
                     this.m_workoutTemplates = workouts;
 
-                    //this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "Moj Workout", new Date());
+                    if (!workoutId) {
+                        this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "FitUP: Prsia, Biceps", new Date(2018, 1, 9, 8));
+                    }
+                    else {
+                        this.m_dataProvider.loadWorkout(workoutId, workout => {
+                            this.workout = ko.observable(workout);
 
-                    this.m_dataProvider.loadWorkout("9cad0c63-9d20-4b8a-8fbd-f8c7e18bb634", workout => {
-                        this.workout = ko.observable(workout);
-                        //this.workout().start();
-                        ko.applyBindings(this);
-                    });
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.form.caption = this.workout().name;
+                                entityForm.isDirty = true;
+                            }, function (err) {
+                                MobileCRM.bridge.alert("Unable to set dirty flag");
+                            }, this);
+
+                            //this.workout().start();
+                            ko.applyBindings(this);
+                        });
+                    }
 
                 });
             }
@@ -312,9 +322,11 @@
 
         // FIXME: move to helper class
         public spanToTimeLabel(span: number): string {
-            var minutes = Math.floor(span / 60).toString();
+            var hours = Math.floor(span / 3600);
+            span = span % 3600;
+            var minutes = Math.floor(span / 60);
             var seconds = span % 60;
-            return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            return (hours ? (hours + ":") : "") + (minutes > 9 ? "" : "0") + minutes + ":" + (seconds > 9 ? "" : "0") + seconds;
         }
 
         private m_categories: Data.Category[];

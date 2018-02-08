@@ -51,7 +51,8 @@
             }
 
             this.uiStatus = ko.computed(() => {
-                let serieStatuses = this.series().map(s => s.uiStatus());
+                let series = this.series();
+                let serieStatuses = series.map(s => s.uiStatus());
 
                 if (serieStatuses.every(status => status === SerieStatus.Queued))
                     return SerieStatus.Queued;
@@ -178,11 +179,13 @@
         }
 
         public showPrevious(): void {
-            (<Workout>this.parent).displayedSet(this.previous);
+            if (this.previous)
+                (<Workout>this.parent).displayedSet(this.previous);
         }
 
         public showNext(): void {
-            (<Workout>this.parent).displayedSet(this.next);
+            if (this.next)
+                (<Workout>this.parent).displayedSet(this.next);
         }
 
         public showRunningSet(): void {

@@ -174,17 +174,17 @@
                     result.description = entity[0].properties.comments;
                     //result.uiState(entity.properties[0].statuscode);
                     if (entity[0].properties.started_on)
-                        result.uiStartedOn(new Date(entity[0].properties.started_on).getTime());
+                        result.uiStartedOn(new Date(entity[0].properties.actualstart));
                     if (entity[0].properties.finished_on)
-                        result.uiFinishedOn(new Date(entity[0].properties.finished_on).getTime());
+                        result.uiFinishedOn(new Date(entity[0].properties.actualend));
 
                     this._loadSets(result.id, sets => {
                         if (sets)
                             sets.forEach(set => result.addSet(set));
 
                         let entityWriter = new JSBridgeEntityWriter(entity[0]);
-                        entityWriter.subscribeObservableForWriting(result.uiStartedOn, "started_on");
-                        entityWriter.subscribeObservableForWriting(result.uiFinishedOn, "finished_on");
+                        entityWriter.subscribeObservableForWriting(result.uiStartedOn, "actualstart");
+                        entityWriter.subscribeObservableForWriting(result.uiFinishedOn, "actualend");
                         entityWriter.subscribeObservableForWriting(result.uiStatus, "statuscode");
 
                         onLoaded(result);
@@ -200,7 +200,7 @@
             let entity = new MobileCRM.FetchXml.Entity("set");
             entity.addAttributes();
             entity.filter = new MobileCRM.FetchXml.Filter();
-            entity.filter.where("workout", "eq", workoutId);
+            entity.filter.where("workoutid", "eq", workoutId);
             entity.orderBy("order", false);
 
             let fetch = new MobileCRM.FetchXml.Fetch(entity);
@@ -233,7 +233,7 @@
                 if (series)
                     series.forEach(serie => set.addSerie(serie));
 
-                onLoaded(set);
+                onLoaded(set)
             });
         }
 
@@ -286,6 +286,8 @@
         public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date): void {
             let workoutEntity = new MobileCRM.DynamicEntity("workout");
             workoutEntity.properties.name = workoutName;
+            workoutEntity.properties.scheduledstart = scheduledOn;
+            workoutEntity.properties.scheduledend = moment(scheduledOn).add(2, "hours").toDate();
             workoutEntity.properties.description = workoutTemplate.description;
 
             workoutEntity.save(function(error) {
@@ -297,7 +299,7 @@
                     // create sets
                     workoutTemplate.setTemplates.forEach(function(setTemplate) {
                         let setEntity = new MobileCRM.DynamicEntity("set");
-                        setEntity.properties.workout = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
+                        setEntity.properties.workoutid = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
                         setEntity.properties.name = setTemplate.name;
                         setEntity.properties.order = setTemplate.order;
                         setEntity.save(function(error) {
@@ -323,16 +325,6 @@
                             }
                         });
                     }, this);
-
-                    //schedule the newly creted workout
-                    let workoutScheduleEntity = new MobileCRM.DynamicEntity("workout_schedule");
-                    workoutScheduleEntity.properties.scheduledon = scheduledOn;
-                    workoutScheduleEntity.properties.workout = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
-
-                    workoutScheduleEntity.save(error => {
-                        if (error)
-                            MobileCRM.bridge.alert("Error creating workout schedule: " + error);
-                    });
                 }
             });
         }

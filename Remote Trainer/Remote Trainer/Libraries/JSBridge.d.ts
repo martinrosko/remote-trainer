@@ -38,12 +38,33 @@ declare namespace MobileCRM {
         new(target: string, id: string, name: string): ReferenceStatic;
     }
 
+    interface UIStatic {
+        EntityForm: EntityFormStatic;
+        Form: FormStatic;
+    }
+
+    interface EntityFormStatic {
+        requestObject(success: (result: EntityForm) => void, error: (err: string) => void, scope?: any): void;
+    }
+
+    interface EntityForm {
+        isDirty: boolean;
+        form: Form;
+    }
+
+    interface FormStatic {
+    }
+
+    interface Form {
+        caption: string;
+    }
+
     export var FetchXml: FetchXmlStatic;
     export var DynamicEntity: DynamicEntityStatic;
     export interface DynamicEntity extends DynamicEntityStatic { }
     export var Reference: ReferenceStatic;
     export interface Reference extends ReferenceStatic { }
-
+    export var UI: UIStatic;
     export var bridge: Bridge;
 }
 

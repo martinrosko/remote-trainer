@@ -41,7 +41,8 @@ var RemoteTrainer;
                     template.serieTemplates.forEach(function (serieTemplate) { return _this.addSerie(new Data.Serie(serieTemplate)); }, _this);
                 }
                 _this.uiStatus = ko.computed(function () {
-                    var serieStatuses = _this.series().map(function (s) { return s.uiStatus(); });
+                    var series = _this.series();
+                    var serieStatuses = series.map(function (s) { return s.uiStatus(); });
                     if (serieStatuses.every(function (status) { return status === Data.SerieStatus.Queued; }))
                         return Data.SerieStatus.Queued;
                     else if (serieStatuses.every(function (status) { return status === Data.SerieStatus.Finished; }))
@@ -146,10 +147,12 @@ var RemoteTrainer;
                 RemoteTrainer.Program.instance.onTabItemClicked("Set");
             };
             Set.prototype.showPrevious = function () {
-                this.parent.displayedSet(this.previous);
+                if (this.previous)
+                    this.parent.displayedSet(this.previous);
             };
             Set.prototype.showNext = function () {
-                this.parent.displayedSet(this.next);
+                if (this.next)
+                    this.parent.displayedSet(this.next);
             };
             Set.prototype.showRunningSet = function () {
                 var set = this.parent.sets().filter(function (s) { return s.uiStatus() === Data.SerieStatus.Running || s.uiStatus() === Data.SerieStatus.Ready; });

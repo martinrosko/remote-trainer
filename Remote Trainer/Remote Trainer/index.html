@@ -38,7 +38,7 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
-            RemoteTrainer.Program.instance.runApplication();
+            RemoteTrainer.Program.instance.runApplication(window.location.search.substring(4));
         });
     </script>
 
@@ -50,7 +50,7 @@
                 <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Set</h2></div>
             </div>
             <div class="content">
-                <div style="background-image: url('Images/background.jpg'); background-repeat:repeat-y; padding: 0px; height: 100%">
+                <div style="background-image: url('Images/background.jpg'); background-repeat:no-repeat; background-size:cover; background-position: center; background-attachment: fixed; padding: 0px; height: 100%; overflow: auto">
                     <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
                 </div>
             </div>
@@ -63,51 +63,55 @@
     </script>
 
     <script id="tmplWorkoutDetails" type="text/html">
-        <!-- ko foreach: workout().sets -->
-        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
-            <!-- ko if: breaks[0]() -->Break: <span class="highlight" data-bind="text: breaks[0]" /><!-- /ko -->&nbsp;
-        </div>
-        <div class="set" style="padding: 10px">
-            <!-- ko foreach: exercises -->
-            <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark }, click: $parent.show.bind($parent)">
-                <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
-                <!-- ko foreach: $parent.series -->
-                <!-- ko if: exercise === $parent -->
-                <div style="border-left: solid 1px black; padding: 5px; width: 50px; text-align: center" data-bind="
+        <div style="padding: 10px">
+            <!-- ko foreach: workout().sets -->
+            <!-- ko if: order > 0 -->
+            <div class="break" style="padding: 5px; box-sizing: border-box; font-size: 1em;">
+                &nbsp;
+            </div>
+            <!-- /ko -->
+            <div class="setDetail">
+                <!-- ko foreach: exercises -->
+                <div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark }, click: $parent.show.bind($parent)">
+                    <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
+                    <!-- ko foreach: $parent.series -->
+                    <!-- ko if: exercise === $parent -->
+                    <div style="border-left: solid 1px black; padding: 5px; width: 50px; text-align: center" data-bind="
                                 style: { backgroundColor: $data.uiStatus() === RemoteTrainer.Data.SerieStatus.Finished ? $parent.category.colorLight : 'white' },
                                 text: (uiAmount() !== undefined ? uiAmount() : '') + (uiAmount() !== undefined && uiReps() !== undefined ? '/' : '') + (uiReps() !== undefined ? uiReps() : '')" />
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </div>
                 <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b><span data-bind="text: uiDurationLabel" /></b> (<span data-bind="text: uiExercisingLabel" />), Avg. Difficulty: <b><span data-bind="text: uiAverageDifficulty" /></b>
+                </div>
                 <!-- /ko -->
-            </div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-            <div class="setinfo">
-                <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b><span data-bind="text: uiDurationLabel" /></b>, Exercising: <b><span data-bind="text: uiExercisingLabel" /></b>, Average Difficulty: <b><span data-bind="text: uiAverageDifficulty" /></b>
-            </div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
-            <div class="setinfo">
-                <img src="Images/serieStatusQueued.png" style="height: 16px; top: 2px; position: relative" /> Estimated start at: <b>10:22</b>
-            </div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
-            <div class="setinfo">
-                <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> Ready
-            </div>
-            <!-- /ko -->
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Running -->
-            <div class="setinfo">
-                <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> Running for <b><span data-bind="text: uiDurationLabel" /></b>
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusQueued.png" style="height: 16px; top: 2px; position: relative" /> Estimated start at: <b>10:22</b>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> In Break <b><span data-bind="text: breaks[0]" /></b>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Running -->
+                <div class="setinfo">
+                    <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> Running for <b><span data-bind="text: uiDurationLabel" /></b>
+                </div>
+                <!-- /ko -->
             </div>
             <!-- /ko -->
         </div>
-        <!-- /ko -->
     </script>
 
     <script id="tmplSetDetails" type="text/html">
         <!-- ko with: workout().displayedSet() -->
-        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
-            Break: <span class="highlight" data-bind="text: breaks[0]" />
+        <div class="break" style="padding: 5px; box-sizing: border-box; font-size: 1em">
+            &nbsp;
         </div>
         <div class="set" style="padding: 10px">
             <!-- ko foreach: series -->
@@ -145,6 +149,12 @@
             <div class="cell button imgStatus" style="width: 55px" data-bind="style: { backgroundColor: exercise.category.colorLight, backgroundImage: 'url(\'Images/serieStatus' + RemoteTrainer.Data.SerieStatus[uiStatus()] + '.png\')' }, click: onStatusClicked"></div>
             <!-- /ko -->
             <div class="info" data-bind="style: { backgroundColor: 'white' }">
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
+                <div style="width: 100%;">
+                    <br />
+                    In Break: <span style="font-size: 1.4em; font-weight: bold; font-style: normal" data-bind="text: parent.breaks[order]" />
+                </div>
+                <!-- /ko -->
                 <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
                 <div>
                     Duration: <span class="highlight" data-bind="text: uiDuration"/><br />
@@ -172,8 +182,8 @@
            </div>
         </div>
         <!-- ko if: order < parent.series().length - 1 || parent.uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-        <div class="break" style="padding: 5px; box-sizing: border-box; background: white; opacity: 0.75; font-size: 12px; text-align: center; background: #eeeeee">
-            <!-- ko if: parent.breaks[order + 1]() -->Break: <span class="highlight" data-bind="text: parent.breaks[order + 1]" /><!-- /ko -->&nbsp;
+        <div class="break" style="padding: 5px; box-sizing: border-box; font-size: 1em">
+            &nbsp;
         </div>
         <!-- /ko -->
     </script>
@@ -213,38 +223,48 @@
 
     <script id="tmplOverview" type="text/html">
         <!-- ko with: workout() -->
-        <div style="padding: 200px 20px; height: 100%">
-            <div style="position: absolute; top: 250px; left: 20px; width: calc(100% - 40px); background: white; opacity: 0.85; border-radius: 25px; height: calc(100% - 500px); ">
-            </div>
-            <div style="position: absolute; top: 250px; left: 20px; width: calc(100% - 40px); border-radius: 25px; height: calc(100% - 500px); border: solid 1px black; padding: 20px; text-align: center">
+        <div style="height: 100%; width: 100%; display: flex; align-items: center; padding: 20px">
+            <div style="width: 100%; height: 325px; border: solid 1px black; padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.75); box-shadow: 10px 15px 2px rgba(0,0,0,0.55)">
                 <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Ready -->
-                <span class="bigestDigit">00:00:00</span><br /><br />
+                <span class="bigestDigit">00:00</span><br /><br />
                 <br />
                 <img src="Images/serieStatusReady.png" style="height: 10em" data-bind="click: start" />
                 <!-- /ko -->
-                <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running -->
-                <span class="bigestDigit">00:00:00</span><br />
+                <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Running || uiStatus() === RemoteTrainer.Data.WorkoutStatus.Finished -->
+                <span class="bigestDigit" data-bind="text: uiDuration" /><br />
                 <br />
                 <br />
                 <div style="text-align: left">
                     <span style="font-size: 1em; font-weight: bold; font-style: normal">Completion:</span>
                     <div style="background: white; width: 100%; height: 30px; position: relative; border: solid 1px black">
-                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #4499dd)"></div>
-                        <div style="position: absolute; right: 0px; top: 0px; height: 100%; width: 80%; background: white;"></div>
-                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold">20%</div>
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #99dd44)"></div>
+                        <div data-bind="style: {width: (100 - completition()) + '%'}" style="position: absolute; right: 0px; top: 0px; height: 100%; background: white"></div>
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold" data-bind="text: completition() + ' %'"></div>
                     </div>
                     <br />
                     <span style="font-size: 1em; font-weight: bold; font-style: normal">Average Difficulty:</span>
                     <div style="background: transparent; width: 100%; height: 30px; position: relative; border: solid 1px black">
                         <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #aa0000);"></div>
-                        <div style="position: absolute; right: 0px; top: 0px; height: 100%; width: 20%; background: white;"></div>
-                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold">4.0</div>
+                        <div data-bind="style: {width: (100 - (averageDifficulty() * 20)) + '%'}" style="position: absolute; right: 0px; top: 0px; height: 100%; background: white;"></div>
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; font-size: 1.5em; color: black; text-align: left; padding-left: 0.5em; font-weight: bold" data-bind="text: averageDifficulty().toFixed(1)"></div>
                     </div>
                     <br />
                     <br />
                     <div style="width: 100%; height: 30px">
-                        <div style="height: 30px; line-height: 30px; display: inline-block; width: 50%; padding: 0px; margin: 0px; box-sizing: border-box"><span>Estimated End:</span><span style="font-size: 1em; font-weight: bold; font-style: normal">10:12:00</span>
-                        </div><div style="height: 30px; line-height: 30px; display: inline-block; width: 50%; padding: 0px; margin: 0px; box-sizing: border-box; text-align: right"><img src="Images/serieStatusRunning.png" style="height:1.2em" /> <span data-bind="click: stop">Finish Workout</span></div>
+                        <div style="display: inline-block; width: 45%; padding: 0px; margin: 0px; box-sizing: border-box">
+                            <span>Started On:</span> <span style="font-size: 1em; font-weight: bold; font-style: normal" data-bind="text: moment(uiStartedOn()).format('hh:mm')"></span><br />
+                            <!-- ko if: uiStatus() !== RemoteTrainer.Data.WorkoutStatus.Finished -->
+                            <span>Estimated End:</span> <span style="font-size: 1em; font-weight: bold; font-style: normal">10:12</span>
+                            <!-- /ko -->
+                            <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Finished -->
+                            <span>Finished On:</span> <span style="font-size: 1em; font-weight: bold; font-style: normal" data-bind="text: moment(uiFinishedOn()).format('hh:mm')"></span>
+                            <!-- /ko -->
+                        </div>
+                        <!-- ko if: uiStatus() !== RemoteTrainer.Data.WorkoutStatus.Finished -->
+                        <div style="display: inline-block; width: 50%; padding: 0px; margin: 0px; box-sizing: border-box; text-align: right; cursor: pointer">
+                            <img src="Images/serieStatusRunning.png" style="height:1.4em" /> <span data-bind="click: stop" style="text-decoration: underline; position: relative; top: -4px">Finish Workout</span>
+                        </div>
+                        <!-- /ko -->
                    </div>
                 </div>
                 <!-- /ko -->

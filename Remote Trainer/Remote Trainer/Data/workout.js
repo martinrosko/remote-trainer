@@ -40,6 +40,36 @@ var RemoteTrainer;
                     template.copyTo(_this);
                     template.setTemplates.forEach(function (setTemplate) { return _this.addSet(new Data.Set(setTemplate)); }, _this);
                 }
+                _this.duration = ko.observable(0);
+                _this.uiDuration = ko.computed(function () {
+                    var duration = _this.duration();
+                    return duration >= 0 ? RemoteTrainer.Program.instance.spanToTimeLabel(duration) : "";
+                }, _this);
+                _this.completition = ko.computed(function () {
+                    var numSeries = 0;
+                    var finishedSeries = 0;
+                    _this.sets().forEach(function (set) {
+                        set.series().forEach(function (serie) {
+                            numSeries++;
+                            if (serie.uiStatus() === Data.SerieStatus.Finished)
+                                finishedSeries++;
+                        });
+                    });
+                    return Math.round((finishedSeries / numSeries) * 100);
+                }, _this);
+                _this.averageDifficulty = ko.computed(function () {
+                    var difficulty = 0;
+                    var finishedSeries = 0;
+                    _this.sets().forEach(function (set) {
+                        set.series().forEach(function (serie) {
+                            if (serie.uiStatus() === Data.SerieStatus.Finished) {
+                                finishedSeries++;
+                                difficulty += serie.difficulty();
+                            }
+                        });
+                    });
+                    return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
+                }, _this);
                 _this.displayedSet = ko.observable();
                 return _this;
             }
@@ -55,13 +85,25 @@ var RemoteTrainer;
             };
             Workout.prototype.start = function () {
                 this.uiStatus(WorkoutStatus.Running);
-                this.uiStartedOn(Date.now());
+                this.uiStartedOn(new Date());
+                this.duration(0);
+                // subscribe duration timer to global timer
+                this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
                 this.displayedSet = ko.observable(this.sets()[0]);
                 this.displayedSet().start();
             };
             Workout.prototype.stop = function () {
-                this.uiFinishedOn(Date.now());
+                // unsubscribe the duration timer
+                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+                if (timerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                this.uiFinishedOn(new Date());
                 this.uiStatus(WorkoutStatus.Finished);
+            };
+            Workout.prototype._onDurationTimer = function (context) {
+                this.duration(this.duration() + 1);
             };
             return Workout;
         }(WorkoutTemplate));

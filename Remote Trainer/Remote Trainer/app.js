@@ -26,7 +26,7 @@ var RemoteTrainer;
             enumerable: true,
             configurable: true
         });
-        Program.prototype.runApplication = function () {
+        Program.prototype.runApplication = function (workoutId) {
             var _this = this;
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
@@ -44,12 +44,22 @@ var RemoteTrainer;
                     _this.m_categories = categories;
                     _this.m_exercises = exercises;
                     _this.m_workoutTemplates = workouts;
-                    //this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "Moj Workout", new Date());
-                    _this.m_dataProvider.loadWorkout("9cad0c63-9d20-4b8a-8fbd-f8c7e18bb634", function (workout) {
-                        _this.workout = ko.observable(workout);
-                        //this.workout().start();
-                        ko.applyBindings(_this);
-                    });
+                    if (!workoutId) {
+                        _this.m_dataProvider.instantiateWorkout(_this.m_workoutTemplates[0], "FitUP: Prsia, Biceps", new Date(2018, 1, 9, 8));
+                    }
+                    else {
+                        _this.m_dataProvider.loadWorkout(workoutId, function (workout) {
+                            _this.workout = ko.observable(workout);
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.form.caption = this.workout().name;
+                                entityForm.isDirty = true;
+                            }, function (err) {
+                                MobileCRM.bridge.alert("Unable to set dirty flag");
+                            }, _this);
+                            //this.workout().start();
+                            ko.applyBindings(_this);
+                        });
+                    }
                 });
             }
         };
@@ -275,9 +285,11 @@ var RemoteTrainer;
         };
         // FIXME: move to helper class
         Program.prototype.spanToTimeLabel = function (span) {
-            var minutes = Math.floor(span / 60).toString();
+            var hours = Math.floor(span / 3600);
+            span = span % 3600;
+            var minutes = Math.floor(span / 60);
             var seconds = span % 60;
-            return (minutes.length < 2 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            return (hours ? (hours + ":") : "") + (minutes > 9 ? "" : "0") + minutes + ":" + (seconds > 9 ? "" : "0") + seconds;
         };
         return Program;
     }());
