@@ -15,11 +15,12 @@ var RemoteTrainer;
         var SetTemplate = (function () {
             function SetTemplate() {
                 this.serieTemplates = [];
+                this.order = ko.observable();
             }
             SetTemplate.prototype.addSerie = function (serie) {
                 this.serieTemplates.push(serie);
                 serie.parent = this;
-                serie.order = this.serieTemplates.length;
+                serie.order(this.serieTemplates.length);
             };
             SetTemplate.prototype.copyTo = function (dst) {
                 dst.order = this.order;
@@ -32,8 +33,8 @@ var RemoteTrainer;
             function Set(template) {
                 var _this = _super.call(this) || this;
                 _this.exercises = ko.observableArray();
-                _this.next = null;
-                _this.previous = null;
+                _this.next = ko.observable(null);
+                _this.previous = ko.observable(null);
                 _this.breaks = [ko.observable("")];
                 _this.series = ko.observableArray();
                 if (template) {
@@ -77,16 +78,18 @@ var RemoteTrainer;
                 }, _this);
                 _this.m_breakTimer = new RemoteTrainer.GlobalTimer();
                 _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
+                _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSetSettings");
+                _this.uiOptionsPanelState = ko.observable(Data.OptionPanelState.Closed);
                 return _this;
             }
             Set.prototype.addSerie = function (serie) {
                 var index = this.series().length;
                 serie.parent = this;
-                serie.order = index;
+                serie.order(index);
                 this.series.push(serie);
                 if (index > 0) {
-                    this.series()[index - 1].next = serie;
-                    serie.previous = this.series()[index - 1];
+                    this.series()[index - 1].next(serie);
+                    serie.previous(this.series()[index - 1]);
                 }
                 if (this.exercises().indexOf(serie.exercise) < 0)
                     this.exercises().push(serie.exercise);
@@ -119,8 +122,8 @@ var RemoteTrainer;
                         this.m_runningTimer.context = Math.round(Date.now() / 1000);
                         this.m_runningTimer.fn = this._onRunningTick.bind(this);
                         RemoteTrainer.Program.instance.GlobalTimer.push(this.m_runningTimer);
-                        if (this.previous)
-                            this.previous.stopBreak(this.previous.breaks.length - 1);
+                        if (this.previous())
+                            this.previous().stopBreak(this.previous().breaks.length - 1);
                     }
                 }
             };
@@ -147,17 +150,85 @@ var RemoteTrainer;
                 RemoteTrainer.Program.instance.onTabItemClicked("Set");
             };
             Set.prototype.showPrevious = function () {
-                if (this.previous)
-                    this.parent.displayedSet(this.previous);
+                if (this.previous())
+                    this.parent.displayedSet(this.previous());
             };
             Set.prototype.showNext = function () {
-                if (this.next)
-                    this.parent.displayedSet(this.next);
+                if (this.next())
+                    this.parent.displayedSet(this.next());
             };
             Set.prototype.showRunningSet = function () {
                 var set = this.parent.sets().filter(function (s) { return s.uiStatus() === Data.SerieStatus.Running || s.uiStatus() === Data.SerieStatus.Ready; });
                 if (set.length > 0)
                     this.parent.displayedSet(set[0]);
+            };
+            Set.prototype.showHideSettings = function () {
+                this.uiOptionsPanelState(this.uiOptionsPanelState() === Data.OptionPanelState.Closed ? Data.OptionPanelState.Opened : Data.OptionPanelState.Closed);
+            };
+            Set.prototype.moveDown = function () {
+                if (this.next()) {
+                    var sets = this.parent.sets();
+                    sets.splice(this.order(), 1);
+                    sets.splice(this.order() + 1, 0, this);
+                    this.next().order(this.order());
+                    this.order(this.order() + 1);
+                    var nextSet = this.next();
+                    this.next(nextSet.next());
+                    nextSet.next(this);
+                    if (this.next())
+                        this.next().previous(this);
+                    var previousSet = this.previous();
+                    this.previous(nextSet);
+                    nextSet.previous(previousSet);
+                    if (previousSet)
+                        previousSet.next(this.previous());
+                    this.parent.sets.valueHasMutated();
+                }
+            };
+            Set.prototype.moveUp = function () {
+                if (this.previous()) {
+                    var sets = this.parent.sets();
+                    sets.splice(this.order(), 1);
+                    sets.splice(this.order() - 1, 0, this);
+                    this.previous().order(this.order());
+                    this.order(this.order() - 1);
+                    var previousSet = this.previous();
+                    this.previous(previousSet.previous());
+                    previousSet.previous(this);
+                    if (this.previous())
+                        this.previous().next(this);
+                    var nextSet = this.next();
+                    this.next(previousSet);
+                    previousSet.next(nextSet);
+                    if (nextSet)
+                        nextSet.previous(this.next());
+                    this.parent.sets.valueHasMutated();
+                    if (this.next().uiStatus() === Data.SerieStatus.Ready) {
+                        // FIXME: create postpone method that  handles breaks and uiStatus in separate method
+                        this.next().series()[0].uiStatus(Data.SerieStatus.Queued);
+                        this.start();
+                    }
+                }
+            };
+            Set.prototype.remove = function () {
+                if (confirm("Remove the entire set?")) {
+                    this.parent.sets.splice(this.order(), 1);
+                    if (this.previous())
+                        this.previous().next(this.next());
+                    if (this.next())
+                        this.next().previous(this.previous());
+                    var next = this.next();
+                    while (next) {
+                        next.order(next.order() - 1);
+                        next = next.next();
+                    }
+                }
+            };
+            Set.prototype.modifySet = function (set) {
+                this.parent.modifiedSet(this);
+                RemoteTrainer.Program.instance.uiContentTemplateName("tmplModifySet");
+                RemoteTrainer.Program.instance.uiFooterTemplateName("");
+                RemoteTrainer.Program.instance.bDisableTabs = true;
             };
             return Set;
         }(SetTemplate));

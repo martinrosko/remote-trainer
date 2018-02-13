@@ -10,6 +10,7 @@ var RemoteTrainer;
     var Program = (function () {
         function Program() {
             this.GlobalTimer = [];
+            this.bDisableTabs = false;
             this.uiSelectedTabIndex = ko.observable(0);
             this.uiContentTemplateName = ko.observable("tmplOverview");
             this.uiFooterTemplateName = ko.observable();
@@ -64,6 +65,8 @@ var RemoteTrainer;
             }
         };
         Program.prototype.onTabItemClicked = function (itemName) {
+            if (this.bDisableTabs)
+                return;
             switch (itemName) {
                 case "Overview":
                     this.uiContentTemplateName("tmplOverview");

@@ -107,7 +107,7 @@ var RemoteTrainer;
             JSBridgeProvider.prototype._loadSetTemplate = function (setEntity, onLoaded) {
                 var set = new RemoteTrainer.Data.SetTemplate();
                 set.id = setEntity.id;
-                set.order = setEntity.properties.order;
+                set.order(setEntity.properties.order);
                 // load workout sets
                 this._loadSerieTemplates(set.id, function (series) {
                     set.serieTemplates = series;
@@ -129,7 +129,7 @@ var RemoteTrainer;
                         for (var i = 0; i < serieEntities.length; i++) {
                             var serie = new RemoteTrainer.Data.SerieTemplate();
                             serie.id = serieEntities[i].id;
-                            serie.order = serieEntities[i].properties.order;
+                            serie.order(serieEntities[i].properties.order);
                             serie.amount = serieEntities[i].properties.amount;
                             serie.reps = serieEntities[i].properties.reps;
                             serie.exercise = _this.m_exercises.firstOrDefault(function (exercise) { return exercise.id === serieEntities[i].properties.exercise.id; });
@@ -194,7 +194,7 @@ var RemoteTrainer;
             JSBridgeProvider.prototype._loadSet = function (setEntity, onLoaded) {
                 var set = new RemoteTrainer.Data.Set();
                 set.id = setEntity.id;
-                set.order = setEntity.properties.order;
+                set.order(setEntity.properties.order);
                 set.entityWriter = new JSBridgeEntityWriter(setEntity);
                 // load workout sets
                 this._loadSeries(set.id, function (series) {
@@ -217,7 +217,7 @@ var RemoteTrainer;
                         for (var i = 0; i < serieEntities.length; i++) {
                             var serie = new RemoteTrainer.Data.Serie();
                             serie.id = serieEntities[i].id;
-                            serie.order = serieEntities[i].properties.order;
+                            serie.order(serieEntities[i].properties.order);
                             serie.amount = serieEntities[i].properties.amount;
                             serie.uiAmount(serie.amount);
                             serie.reps = serieEntities[i].properties.reps;
@@ -260,7 +260,7 @@ var RemoteTrainer;
                             var setEntity = new MobileCRM.DynamicEntity("set");
                             setEntity.properties.workoutid = new MobileCRM.Reference("workout", this.id, "");
                             setEntity.properties.name = setTemplate.name;
-                            setEntity.properties.order = setTemplate.order;
+                            setEntity.properties.order = setTemplate.order();
                             setEntity.save(function (error) {
                                 // note: scope (this) is newly created dynamic entity (set)
                                 if (error) {
@@ -273,7 +273,7 @@ var RemoteTrainer;
                                         serieEntity.properties.setid = new MobileCRM.Reference("set", this.id, "");
                                         serieEntity.properties.amount = serieTemplate.amount;
                                         serieEntity.properties.exercise = new MobileCRM.Reference("exercise", serieTemplate.exercise.id, "");
-                                        serieEntity.properties.order = serieTemplate.order;
+                                        serieEntity.properties.order = serieTemplate.order();
                                         serieEntity.properties.reps = serieTemplate.reps;
                                         serieEntity.save(function (error) {
                                             if (error)

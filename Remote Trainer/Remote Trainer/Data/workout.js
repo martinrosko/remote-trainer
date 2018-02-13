@@ -19,7 +19,7 @@ var RemoteTrainer;
             WorkoutTemplate.prototype.addSet = function (set) {
                 this.setTemplates.push(set);
                 set.parent = this;
-                set.order = this.setTemplates.length;
+                set.order(this.setTemplates.length);
             };
             WorkoutTemplate.prototype.copyTo = function (dst) {
                 dst.name = this.name;
@@ -71,16 +71,17 @@ var RemoteTrainer;
                     return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
                 }, _this);
                 _this.displayedSet = ko.observable();
+                _this.modifiedSet = ko.observable();
                 return _this;
             }
             Workout.prototype.addSet = function (set) {
                 var index = this.sets().length;
                 set.parent = this;
-                set.order = index;
+                set.order(index);
                 this.sets.push(set);
                 if (index > 0) {
-                    this.sets()[index - 1].next = set;
-                    set.previous = this.sets()[index - 1];
+                    this.sets()[index - 1].next(set);
+                    set.previous(this.sets()[index - 1]);
                 }
             };
             Workout.prototype.start = function () {

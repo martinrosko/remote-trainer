@@ -12,7 +12,7 @@
         public addSet(set: SetTemplate): void {
             this.setTemplates.push(set);
             set.parent = this;
-            set.order = this.setTemplates.length;
+            set.order(this.setTemplates.length);
         }
 
         public copyTo(dst: WorkoutTemplate): void {
@@ -32,6 +32,7 @@
         public averageDifficulty: KnockoutComputed<number>;
 
         public displayedSet: KnockoutObservable<Data.Set>;
+        public modifiedSet: KnockoutObservable<Data.Set>;
 
         constructor(template?: WorkoutTemplate) {
             super();
@@ -81,18 +82,20 @@
                 });
                 return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
             }, this);
+
             this.displayedSet = ko.observable<Data.Set>();
+            this.modifiedSet = ko.observable<Data.Set>();
         }
 
         public addSet(set: Set): void {
             let index = this.sets().length;
             set.parent = this;
-            set.order = index;
+            set.order(index);
             this.sets.push(set);
 
             if (index > 0) {
-                this.sets()[index - 1].next = set;
-                set.previous = this.sets()[index - 1];
+                this.sets()[index - 1].next(set);
+                set.previous(this.sets()[index - 1]);
             }
         }
 

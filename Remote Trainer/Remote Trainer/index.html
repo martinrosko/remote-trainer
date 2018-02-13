@@ -65,7 +65,7 @@
     <script id="tmplWorkoutDetails" type="text/html">
         <div style="padding: 10px">
             <!-- ko foreach: workout().sets -->
-            <!-- ko if: order > 0 -->
+            <!-- ko if: order() > 0 -->
             <div class="break" style="padding: 5px; box-sizing: border-box; font-size: 1em;">
                 &nbsp;
             </div>
@@ -83,28 +83,38 @@
                     <!-- /ko -->
                 </div>
                 <!-- /ko -->
-                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
-                <div class="setinfo">
-                    <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b><span data-bind="text: uiDurationLabel" /></b> (<span data-bind="text: uiExercisingLabel" />), Avg. Difficulty: <b><span data-bind="text: uiAverageDifficulty" /></b>
+                <div class="optionPanel" data-bind="visible: uiOptionsPanelState() === RemoteTrainer.Data.OptionPanelState.Opened">
+                    <!-- ko if: uiOptionsContentTemplate() -->
+                    <!-- ko template: { name: uiOptionsContentTemplate } --><!-- /ko -->
+                    <!-- /ko -->
                 </div>
-                <!-- /ko -->
-                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
-                <div class="setinfo">
-                    <img src="Images/serieStatusQueued.png" style="height: 16px; top: 2px; position: relative" /> Estimated start at: <b>10:22</b>
-                </div>
-                <!-- /ko -->
-                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
-                <div class="setinfo">
-                    <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> In Break <b><span data-bind="text: breaks[0]" /></b>
-                </div>
-                <!-- /ko -->
-                <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Running -->
-                <div class="setinfo">
-                    <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> Running for <b><span data-bind="text: uiDurationLabel" /></b>
-                </div>
+                <!-- ko if: uiOptionsPanelState() !== RemoteTrainer.Data.OptionPanelState.Opened-->
+                        <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
+                        <div class="setinfo">
+                            <img src="Images/serieStatusFinished.png" style="height: 16px; top: 2px; position: relative" /> Completed in: <b><span data-bind="text: uiDurationLabel" /></b> (<span data-bind="text: uiExercisingLabel" />), Avg. Difficulty: <b><span data-bind="text: uiAverageDifficulty" /></b>
+                        </div>
+                        <!-- /ko -->
+                        <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Queued -->
+                        <div class="setinfo">
+                            <img src="Images/serieStatusQueued.png" style="height: 16px; top: 2px; position: relative; cursor: pointer" data-bind="click: showHideSettings" /> Estimated start at: <b>10:22</b>
+                        </div>
+                        <!-- /ko -->
+                        <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
+                        <div class="setinfo">
+                            <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> In Break <b><span data-bind="text: breaks[0]" /></b>
+                        </div>
+                        <!-- /ko -->
+                        <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Running -->
+                        <div class="setinfo">
+                            <img src="Images/serieStatusReady.png" style="height: 16px; top: 2px; position: relative" /> Running for <b><span data-bind="text: uiDurationLabel" /></b>
+                        </div>
+                        <!-- /ko -->
                 <!-- /ko -->
             </div>
             <!-- /ko -->
+            <div class="setDetail" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
+                <img src="Images/add.png" style="height: 16px" /> Add Set
+            </div>
         </div>
     </script>
 
@@ -209,15 +219,23 @@
         </div>
     </script>
 
-    <!--style="background: #C9FFDA"
-    style="background: #D9FFEA"
-    style="background: #FBFFD6"
-    style="background: #FFD9C6"
-    style="background: #FFB7AA"-->
-
     <script id="tmplOptionsSerieSettings" type="text/html">
         <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
             Nastavenia pre konkretnu serie: vynechat, zamenit, posunut na neskor...
+        </div>
+    </script>
+
+    <script id="tmplOptionsSetSettings" type="text/html">
+        <div class="setinfo" style="display: flex; flex-direction: row">
+            <div data-bind="click: showHideSettings" style="border-right: dashed 1px black; width: 50px; background-image: url('Images/settings.png'); background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+            <div data-bind="click: modifySet" style="flex: 1; padding-left: 5px"><span class="highlight link" style="cursor: pointer">Modify</span></div>            
+            <!-- ko if: next()-->
+            <div data-bind="click: moveDown" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/down_arrow.png'); background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+            <!-- /ko -->
+            <!-- ko if: previous() && (previous().uiStatus() === RemoteTrainer.Data.SerieStatus.Queued || previous().uiStatus() === RemoteTrainer.Data.SerieStatus.Ready) -->
+            <div data-bind="click: moveUp" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/up_arrow.png'); background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+            <!-- /ko -->
+            <div data-bind="click: remove" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/trash.png'); background-position: center; background-repeat: no-repeat; background-color: #ffdddd; background-size: 16px; cursor: pointer" />
         </div>
     </script>
 
@@ -272,6 +290,43 @@
         </div>
         <!-- /ko -->
     </script>
+
+    <script id="tmplModifySet" type="text/html">
+        <!-- ko with: workout().modifiedSet() -->
+            <!-- ko foreach: series() -->
+            <div class="setDetail" style="margin: 10px; margin-bottom: 0px">
+                <div style="display: flex; flex-direction: row; border-bottom: solid 1px black" data-bind="style: { backgroundColor: exercise.category.colorDark }">
+                    <div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: exercise.name" />
+                    <div data-bind="click: moveDown, style: {backgroundImage: (order() < $parent.series().length - 1) ? 'url(\'Images/down_arrow.png\')' : 'url(\'Images/down_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+                    <div data-bind="click: moveUp, style: {backgroundImage: 0 < order() ? 'url(\'Images/up_arrow.png\')' : 'url(\'Images/up_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+                    <div data-bind="click: remove" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/trash.png'); background-position: center; background-repeat: no-repeat; background-color: #ffdddd; background-size: 16px; cursor: pointer" />
+                </div>
+                <div class="setinfo" style="display: flex; flex-direction: row; background: white; height: 45px">
+                    <div style="flex: 1"></div>
+                    <div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiAmountHasFocus() ? 0 : 5) + 'px' }, click: onAmountClicked">
+                        <!-- ko if: !uiAmountHasFocus() -->
+                        <span class="bigDigit" data-bind="text: uiAmount" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
+                        <!-- /ko -->
+                        <!-- ko if: uiAmountHasFocus() -->
+                        <input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiAmount, hasFocus: uiAmountHasFocus" />
+                        <!-- /ko -->
+                    </div>
+                    <div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiRepsHasFocus() ? 0 : 5) + 'px' }, click: onRepsClicked">
+                        <!-- ko if: !uiRepsHasFocus() -->
+                        <span class="bigDigit" data-bind="text: uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
+                        <!-- /ko -->
+                        <!-- ko if: uiRepsHasFocus() -->
+                        <input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiReps, hasFocus: uiRepsHasFocus" />
+                        <!-- /ko -->
+                    </div>
+                </div>
+            </div>
+            <!-- /ko -->
+        <!-- /ko -->
+        <div class="setDetail" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
+            <img src="Images/add.png" style="height: 16px" /> Add Serie
+        </div>
+</script>
 
 
 </body>

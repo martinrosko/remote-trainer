@@ -78,7 +78,12 @@
             }
         }
 
+        public bDisableTabs: boolean = false;
+
         public onTabItemClicked(itemName: string): void {
+            if (this.bDisableTabs)
+                return;
+
             switch (itemName) {
                 case "Overview":
                     this.uiContentTemplateName("tmplOverview");

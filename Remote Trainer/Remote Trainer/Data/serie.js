@@ -17,10 +17,11 @@ var RemoteTrainer;
                 this.exercise = exercise;
                 this.reps = reps;
                 this.amount = amount;
+                this.order = ko.observable();
             }
             SerieTemplate.prototype.copyTo = function (dst) {
                 dst.exercise = this.exercise;
-                dst.order = this.order;
+                dst.order(this.order());
                 dst.amount = this.amount;
                 dst.reps = this.reps;
             };
@@ -68,6 +69,8 @@ var RemoteTrainer;
                     var diffLabel = _this.uiDifficulty();
                     return Serie.difficulties.indexOf(diffLabel) + 1;
                 }, _this);
+                _this.next = ko.observable();
+                _this.previous = ko.observable();
                 return _this;
             }
             Serie.prototype.activate = function () {
@@ -109,15 +112,15 @@ var RemoteTrainer;
                         var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
                         if (timerIndex >= 0)
                             RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
-                        if (this.next) {
-                            this.next.uiStatus(SerieStatus.Ready);
+                        if (this.next()) {
+                            this.next().uiStatus(SerieStatus.Ready);
                         }
                         else {
                             // finish set
                             var set = this.parent;
                             set.stop();
-                            if (set.next)
-                                set.next.start();
+                            if (set.next())
+                                set.next().start();
                             else
                                 set.parent.stop();
                         }
@@ -133,6 +136,65 @@ var RemoteTrainer;
             };
             Serie.prototype.onRepsClicked = function () {
                 this.uiRepsHasFocus(true);
+            };
+            Serie.prototype.moveDown = function () {
+                if (this.next()) {
+                    var series = this.parent.series();
+                    series.splice(this.order(), 1);
+                    series.splice(this.order() + 1, 0, this);
+                    this.next().order(this.order());
+                    this.order(this.order() + 1);
+                    var nextSet = this.next();
+                    this.next(nextSet.next());
+                    nextSet.next(this);
+                    if (this.next())
+                        this.next().previous(this);
+                    var previousSet = this.previous();
+                    this.previous(nextSet);
+                    nextSet.previous(previousSet);
+                    if (previousSet)
+                        previousSet.next(this.previous());
+                    this.parent.series.valueHasMutated();
+                }
+            };
+            Serie.prototype.moveUp = function () {
+                if (this.previous()) {
+                    var series = this.parent.series();
+                    series.splice(this.order(), 1);
+                    series.splice(this.order() - 1, 0, this);
+                    this.previous().order(this.order());
+                    this.order(this.order() - 1);
+                    var previousSet = this.previous();
+                    this.previous(previousSet.previous());
+                    previousSet.previous(this);
+                    if (this.previous())
+                        this.previous().next(this);
+                    var nextSet = this.next();
+                    this.next(previousSet);
+                    previousSet.next(nextSet);
+                    if (nextSet)
+                        nextSet.previous(this.next());
+                    this.parent.series.valueHasMutated();
+                    //if (this.next().uiStatus() === SerieStatus.Ready) {
+                    //    // FIXME: create postpone method that  handles breaks and uiStatus in separate method
+                    //    this.next().series()[0].uiStatus(SerieStatus.Queued);
+                    //    this.start();
+                    //}
+                }
+            };
+            Serie.prototype.remove = function () {
+                if (confirm("Remove the serie?")) {
+                    this.parent.series.splice(this.order(), 1);
+                    if (this.previous())
+                        this.previous().next(this.next());
+                    if (this.next())
+                        this.next().previous(this.previous());
+                    var next = this.next();
+                    while (next) {
+                        next.order(next.order() - 1);
+                        next = next.next();
+                    }
+                }
             };
             Serie.prototype._toggleOptionsPanel = function () {
                 this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
@@ -150,7 +212,7 @@ var RemoteTrainer;
                 this.uiStartedOn(now);
                 this.duration(0);
                 // stop current break;
-                this.parent.stopBreak(this.order);
+                this.parent.stopBreak(this.order());
                 // subscribe duration timer to global timer
                 this.m_durationTimer = new RemoteTrainer.GlobalTimer();
                 this.m_durationTimer.fn = this._onDurationTimer.bind(this);

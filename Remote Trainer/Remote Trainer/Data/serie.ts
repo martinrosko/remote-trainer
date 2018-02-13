@@ -1,7 +1,7 @@
 ﻿module RemoteTrainer.Data {
     export class SerieTemplate {
         public id: string;
-        public order: number;
+        public order: KnockoutObservable<number>;
         public amount: number;
         public reps: number;
         public parent: SetTemplate;
@@ -11,11 +11,12 @@
             this.exercise = exercise;
             this.reps = reps;
             this.amount = amount;
+            this.order = ko.observable<number>();
         }
 
         public copyTo(dst: SerieTemplate): void {
             dst.exercise = this.exercise;
-            dst.order = this.order;
+            dst.order(this.order());
             dst.amount = this.amount;
             dst.reps = this.reps;
         }
@@ -44,8 +45,8 @@
         public uiCountDown: KnockoutObservable<number>;
         public exercise: Exercise;
 		public parent: Set;
-        public next: Serie;
-        public previous: Serie;
+        public next: KnockoutObservable<Serie>;
+        public previous: KnockoutObservable<Serie>;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -93,6 +94,9 @@
                 var diffLabel = this.uiDifficulty();
                 return Serie.difficulties.indexOf(diffLabel) + 1;
             }, this);
+
+            this.next = ko.observable<Serie>();
+            this.previous = ko.observable<Serie>();
         }
 
 		public activate(): void {
@@ -142,16 +146,16 @@
                     if (timerIndex >= 0)
                         Program.instance.GlobalTimer.splice(timerIndex, 1);
 
-                    if (this.next) {
-                        this.next.uiStatus(SerieStatus.Ready);
+                    if (this.next()) {
+                        this.next().uiStatus(SerieStatus.Ready);
                     }
                     else {
                         // finish set
                         let set = (<Set>this.parent);
                         set.stop();
 
-                        if (set.next)
-                            set.next.start();
+                        if (set.next())
+                            set.next().start();
                         else
                             (<Workout>set.parent).stop();
                     }
@@ -170,6 +174,77 @@
 
         public onRepsClicked(): void {
             this.uiRepsHasFocus(true);
+        }
+
+        public moveDown(): void {
+            if (this.next()) {
+                let series = this.parent.series();
+                series.splice(this.order(), 1);
+                series.splice(this.order() + 1, 0, this);
+                this.next().order(this.order());
+                this.order(this.order() + 1);
+
+                let nextSet = this.next();
+                this.next(nextSet.next());
+                nextSet.next(this);
+                if (this.next())
+                    this.next().previous(this);
+
+                let previousSet = this.previous();
+                this.previous(nextSet);
+                nextSet.previous(previousSet);
+                if (previousSet)
+                    previousSet.next(this.previous());
+
+                this.parent.series.valueHasMutated();
+            }
+        }
+
+        public moveUp(): void {
+            if (this.previous()) {
+                let series = this.parent.series();
+                series.splice(this.order(), 1);
+                series.splice(this.order() - 1, 0, this);
+                this.previous().order(this.order());
+                this.order(this.order() - 1);
+
+                let previousSet = this.previous();
+                this.previous(previousSet.previous());
+                previousSet.previous(this);
+                if (this.previous())
+                    this.previous().next(this);
+
+                let nextSet = this.next();
+                this.next(previousSet);
+                previousSet.next(nextSet);
+                if (nextSet)
+                    nextSet.previous(this.next());
+
+                this.parent.series.valueHasMutated();
+
+                //if (this.next().uiStatus() === SerieStatus.Ready) {
+                //    // FIXME: create postpone method that  handles breaks and uiStatus in separate method
+                //    this.next().series()[0].uiStatus(SerieStatus.Queued);
+                //    this.start();
+                //}
+            }
+        }
+
+        public remove(): void {
+            if (confirm("Remove the serie?")) {
+                this.parent.series.splice(this.order(), 1);
+
+                if (this.previous())
+                    this.previous().next(this.next());
+                if (this.next())
+                    this.next().previous(this.previous());
+
+                let next = this.next();
+                while (next) {
+                    next.order(next.order() - 1);
+                    next = next.next();
+                }
+            }
         }
 
         private _toggleOptionsPanel(): void {
@@ -192,7 +267,7 @@
             this.duration(0);
 
             // stop current break;
-            (<Set>this.parent).stopBreak(this.order);
+            (<Set>this.parent).stopBreak(this.order());
 
             // subscribe duration timer to global timer
             this.m_durationTimer = new GlobalTimer();

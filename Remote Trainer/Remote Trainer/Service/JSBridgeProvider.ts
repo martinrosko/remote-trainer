@@ -123,7 +123,7 @@
         private _loadSetTemplate(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.SetTemplate) => void): void {
             let set = new Data.SetTemplate();
             set.id = setEntity.id;
-            set.order = setEntity.properties.order;
+            set.order(setEntity.properties.order);
 
             // load workout sets
             this._loadSerieTemplates(set.id, series => {
@@ -148,7 +148,7 @@
                         for (var i = 0; i < serieEntities.length; i++) {
                             let serie = new Data.SerieTemplate();
                             serie.id = serieEntities[i].id;
-                            serie.order = serieEntities[i].properties.order;
+                            serie.order(serieEntities[i].properties.order);
                             serie.amount = serieEntities[i].properties.amount;
                             serie.reps = serieEntities[i].properties.reps;
                             serie.exercise = this.m_exercises.firstOrDefault(exercise => exercise.id === serieEntities[i].properties.exercise.id);
@@ -225,7 +225,7 @@
         private _loadSet(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.Set) => void): void {
             let set = new Data.Set();
             set.id = setEntity.id;
-            set.order = setEntity.properties.order;
+            set.order(setEntity.properties.order);
             set.entityWriter = new JSBridgeEntityWriter(setEntity);
 
             // load workout sets
@@ -253,7 +253,7 @@
                         for (var i = 0; i < serieEntities.length; i++) {
                             let serie = new Data.Serie();
                             serie.id = serieEntities[i].id;
-                            serie.order = serieEntities[i].properties.order;
+                            serie.order(serieEntities[i].properties.order);
                             serie.amount = serieEntities[i].properties.amount;
                             serie.uiAmount(serie.amount);
                             serie.reps = serieEntities[i].properties.reps;
@@ -301,7 +301,7 @@
                         let setEntity = new MobileCRM.DynamicEntity("set");
                         setEntity.properties.workoutid = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
                         setEntity.properties.name = setTemplate.name;
-                        setEntity.properties.order = setTemplate.order;
+                        setEntity.properties.order = setTemplate.order();
                         setEntity.save(function(error) {
                             // note: scope (this) is newly created dynamic entity (set)
                             if (error) {
@@ -314,7 +314,7 @@
                                     serieEntity.properties.setid = new MobileCRM.Reference("set", (<MobileCRM.DynamicEntity><any>this).id, "");
                                     serieEntity.properties.amount = serieTemplate.amount;
                                     serieEntity.properties.exercise = new MobileCRM.Reference("exercise", serieTemplate.exercise.id, "");
-                                    serieEntity.properties.order = serieTemplate.order;
+                                    serieEntity.properties.order = serieTemplate.order();
                                     serieEntity.properties.reps = serieTemplate.reps;
                                     serieEntity.save(error => {
                                         if (error)
