@@ -32,7 +32,6 @@
         public averageDifficulty: KnockoutComputed<number>;
 
         public displayedSet: KnockoutObservable<Data.Set>;
-        public modifiedSet: KnockoutObservable<Data.Set>;
 
         constructor(template?: WorkoutTemplate) {
             super();
@@ -84,7 +83,6 @@
             }, this);
 
             this.displayedSet = ko.observable<Data.Set>();
-            this.modifiedSet = ko.observable<Data.Set>();
         }
 
         public addSet(set: Set): void {
@@ -122,6 +120,18 @@
 
             this.uiFinishedOn(new Date());
             this.uiStatus(WorkoutStatus.Finished);
+        }
+
+        public addNewSet(): void {
+            let set = new Set();
+            let dialog = new ModifySetDialog(set);
+            dialog.closed.add(this, (sender, e) => {
+                if (dialog.dialogResult) {
+                    if (set.series().length > 0)
+                        this.addSet(set);
+                }
+            });
+            Program.instance.showDialog(dialog);
         }
 
         private _onDurationTimer(context: any): void {

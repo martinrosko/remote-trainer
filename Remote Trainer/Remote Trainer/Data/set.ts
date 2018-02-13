@@ -30,7 +30,7 @@
         public exercising: KnockoutComputed<number>;
         public uiExercisingLabel: KnockoutComputed<string>;
         public series: KnockoutObservableArray<Serie>;
-        public exercises: KnockoutObservableArray<Exercise>;
+        public exercises: KnockoutComputed<Exercise[]>;
         public breaks: KnockoutObservable<string>[];
         public parent: Workout;
         public next: KnockoutObservable<Set>;
@@ -41,12 +41,23 @@
         constructor(template?: SetTemplate) {
             super();
 
-            this.exercises = ko.observableArray<Exercise>();
             this.next = ko.observable<Set>(null);
             this.previous = ko.observable<Set>(null);
 
             this.breaks = [ko.observable("")];
             this.series = ko.observableArray<Serie>();
+
+            this.exercises = ko.computed(() => {
+                let series = this.series();
+                let result: Exercise[] = [];
+
+                series.forEach(serie => {
+                    if (result.indexOf(serie.exercise) < 0)
+                        result.push(serie.exercise);
+                });
+
+                return result;
+            }, this);
 
             if (template) {
                 template.copyTo(this);
@@ -276,10 +287,26 @@
         }
 
         public modifySet(set: Set): void {
-            this.parent.modifiedSet(this);
-            Program.instance.uiContentTemplateName("tmplModifySet");
-            Program.instance.uiFooterTemplateName("");
-            Program.instance.bDisableTabs = true;
+            //todo: clone set and modify it only if dialogresult = true
+            let dialog = new ModifySetDialog(set);
+            dialog.closed.add(this, (sender, e) => {
+                if (dialog.dialogResult) {
+                    alert('modified');
+                }
+            });
+            Program.instance.showDialog(dialog);
+        }
+
+        public showAddSerieDialog(): void {
+            let dialog = new AddSerieDialog(Program.instance.categories, Program.instance.exercises);
+            dialog.closed.add(this, (sender, e) => {
+                if (dialog.dialogResult) {
+                    let serie = new Serie();
+                    serie.exercise = dialog.selectedExercise();
+                    this.addSerie(serie);
+                }
+            });
+            Program.instance.showDialog(dialog);
         }
 
         private m_timer: number;
@@ -288,4 +315,46 @@
 
         public entityWriter: Service.IEntityWriter;
     }
+
+    export class ModifySetDialog extends Dialog {
+        public modifiedSet: Set;
+
+        constructor(set: Set) {
+            super();
+
+            this.name("Modify Set");
+            this.uiContentTemplateName("tmplModifySetDialog");
+
+            this.modifiedSet = set;
+        }
+    }
+
+    export class AddSerieDialog extends Dialog {
+        public categories: Category[];
+        public exercises: KnockoutComputed<Exercise[]>;
+        public selectedCategory: KnockoutObservable<Category>;
+        public selectedExercise: KnockoutObservable<Exercise>;
+
+        private m_exercises: Exercise[];
+
+        constructor(categories: Category[], exercises: Exercise[]) {
+            super();
+
+            this.name("Add Serie");
+            this.uiContentTemplateName("tmplAddSerieDialog");
+
+            this.categories = categories;
+            this.m_exercises = exercises;
+
+            this.selectedCategory = ko.observable<Category>(this.categories && this.categories.length > 0 ? this.categories[0] : undefined);
+
+            this.exercises = ko.computed(() => {
+                let cat = this.selectedCategory();
+                return this.m_exercises.filter(exc => exc.category === cat);
+            }, this);
+
+            this.selectedExercise = ko.observable<Exercise>(this.exercises() && this.exercises().length > 0 ? this.exercises()[0] : undefined);
+        }
+    }
+
 }

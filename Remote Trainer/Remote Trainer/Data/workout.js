@@ -71,7 +71,6 @@ var RemoteTrainer;
                     return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
                 }, _this);
                 _this.displayedSet = ko.observable();
-                _this.modifiedSet = ko.observable();
                 return _this;
             }
             Workout.prototype.addSet = function (set) {
@@ -102,6 +101,18 @@ var RemoteTrainer;
                     RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
                 this.uiFinishedOn(new Date());
                 this.uiStatus(WorkoutStatus.Finished);
+            };
+            Workout.prototype.addNewSet = function () {
+                var _this = this;
+                var set = new Data.Set();
+                var dialog = new Data.ModifySetDialog(set);
+                dialog.closed.add(this, function (sender, e) {
+                    if (dialog.dialogResult) {
+                        if (set.series().length > 0)
+                            _this.addSet(set);
+                    }
+                });
+                RemoteTrainer.Program.instance.showDialog(dialog);
             };
             Workout.prototype._onDurationTimer = function (context) {
                 this.duration(this.duration() + 1);

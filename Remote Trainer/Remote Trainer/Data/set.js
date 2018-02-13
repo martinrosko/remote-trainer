@@ -32,11 +32,19 @@ var RemoteTrainer;
             __extends(Set, _super);
             function Set(template) {
                 var _this = _super.call(this) || this;
-                _this.exercises = ko.observableArray();
                 _this.next = ko.observable(null);
                 _this.previous = ko.observable(null);
                 _this.breaks = [ko.observable("")];
                 _this.series = ko.observableArray();
+                _this.exercises = ko.computed(function () {
+                    var series = _this.series();
+                    var result = [];
+                    series.forEach(function (serie) {
+                        if (result.indexOf(serie.exercise) < 0)
+                            result.push(serie.exercise);
+                    });
+                    return result;
+                }, _this);
                 if (template) {
                     template.copyTo(_this);
                     template.serieTemplates.forEach(function (serieTemplate) { return _this.addSerie(new Data.Serie(serieTemplate)); }, _this);
@@ -225,14 +233,61 @@ var RemoteTrainer;
                 }
             };
             Set.prototype.modifySet = function (set) {
-                this.parent.modifiedSet(this);
-                RemoteTrainer.Program.instance.uiContentTemplateName("tmplModifySet");
-                RemoteTrainer.Program.instance.uiFooterTemplateName("");
-                RemoteTrainer.Program.instance.bDisableTabs = true;
+                //todo: clone set and modify it only if dialogresult = true
+                var dialog = new ModifySetDialog(set);
+                dialog.closed.add(this, function (sender, e) {
+                    if (dialog.dialogResult) {
+                        alert('modified');
+                    }
+                });
+                RemoteTrainer.Program.instance.showDialog(dialog);
+            };
+            Set.prototype.showAddSerieDialog = function () {
+                var _this = this;
+                var dialog = new AddSerieDialog(RemoteTrainer.Program.instance.categories, RemoteTrainer.Program.instance.exercises);
+                dialog.closed.add(this, function (sender, e) {
+                    if (dialog.dialogResult) {
+                        var serie = new Data.Serie();
+                        serie.exercise = dialog.selectedExercise();
+                        _this.addSerie(serie);
+                    }
+                });
+                RemoteTrainer.Program.instance.showDialog(dialog);
             };
             return Set;
         }(SetTemplate));
         Data.Set = Set;
+        var ModifySetDialog = (function (_super) {
+            __extends(ModifySetDialog, _super);
+            function ModifySetDialog(set) {
+                var _this = _super.call(this) || this;
+                _this.name("Modify Set");
+                _this.uiContentTemplateName("tmplModifySetDialog");
+                _this.modifiedSet = set;
+                return _this;
+            }
+            return ModifySetDialog;
+        }(RemoteTrainer.Dialog));
+        Data.ModifySetDialog = ModifySetDialog;
+        var AddSerieDialog = (function (_super) {
+            __extends(AddSerieDialog, _super);
+            function AddSerieDialog(categories, exercises) {
+                var _this = _super.call(this) || this;
+                _this.name("Add Serie");
+                _this.uiContentTemplateName("tmplAddSerieDialog");
+                _this.categories = categories;
+                _this.m_exercises = exercises;
+                _this.selectedCategory = ko.observable(_this.categories && _this.categories.length > 0 ? _this.categories[0] : undefined);
+                _this.exercises = ko.computed(function () {
+                    var cat = _this.selectedCategory();
+                    return _this.m_exercises.filter(function (exc) { return exc.category === cat; });
+                }, _this);
+                _this.selectedExercise = ko.observable(_this.exercises() && _this.exercises().length > 0 ? _this.exercises()[0] : undefined);
+                return _this;
+            }
+            return AddSerieDialog;
+        }(RemoteTrainer.Dialog));
+        Data.AddSerieDialog = AddSerieDialog;
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=set.js.map

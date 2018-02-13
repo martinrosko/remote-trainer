@@ -24,6 +24,7 @@
     <script src="Libraries/knockout-3.4.2.js"></script>
     <script src="Libraries/moment-2.19.1.min.js"></script>
     <script src="Libraries/JSBridge.js"></script>
+    <script src="app.js"></script> 
     <script src="UI/koCustomBindings.js"></script>
     <script src="Data/category.js"></script>
     <script src="Data/exercise.js"></script>
@@ -31,7 +32,6 @@
     <script src="Data/set.js"></script>
     <script src="Data/workout.js"></script>
     <script src="Service/JSBridgeProvider.js"></script>
-    <script src="app.js"></script>
 </head>
 <body style="background: silver">
     <div id="app_root" data-bind="app: $data"></div>
@@ -44,20 +44,25 @@
 
     <script id="tmplApplication" type="text/html">
         <div class="page" style="width: 100%; height: 100%; background: #eeeeee">
-            <div class="tabControl">
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Overview'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Overview</h2></div>
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Workout</h2></div>
-                <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Set</h2></div>
-            </div>
-            <div class="content">
-                <div style="background-image: url('Images/background.jpg'); background-repeat:no-repeat; background-size:cover; background-position: center; background-attachment: fixed; padding: 0px; height: 100%; overflow: auto">
-                    <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
+            <!-- ko if: dialogs().length > 0 -->
+                <!-- ko template: {name: 'tmplDialog', data: dialogs()[dialogs().length - 1]} --><!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: dialogs().length === 0 -->
+                <div class="tabControl">
+                    <div class="tabItem" data-bind="click: function() { onTabItemClicked('Overview'); }, css: { selected: uiSelectedTabIndex() === 0 }"><h2>Overview</h2></div>
+                    <div class="tabItem" data-bind="click: function() { onTabItemClicked('Workout'); }, css: { selected: uiSelectedTabIndex() === 1 }"><h2>Workout</h2></div>
+                    <div class="tabItem" data-bind="click: function() { onTabItemClicked('Set'); }, css: { selected: uiSelectedTabIndex() === 2 }"><h2>Set</h2></div>
                 </div>
-            </div>
-            <!-- ko if: uiFooterTemplateName() -->
-            <div style="width: 100%; text-align: center; background: #333333; color: white; border-bottom: solid 1px black">
-                <!-- ko template: { name: uiFooterTemplateName } --><!-- /ko -->
-            </div>
+                <div class="content">
+                    <div style="background-image: url('Images/background.jpg'); background-repeat:no-repeat; background-size:cover; background-position: center; background-attachment: fixed; padding: 0px; height: 100%; overflow: auto">
+                        <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
+                    </div>
+                </div>
+                <!-- ko if: uiFooterTemplateName() -->
+                <div style="width: 100%; text-align: center; background: #333333; color: white; border-bottom: solid 1px black">
+                    <!-- ko template: { name: uiFooterTemplateName } --><!-- /ko -->
+                </div>
+                <!-- /ko -->
             <!-- /ko -->
         </div>
     </script>
@@ -112,7 +117,7 @@
                 <!-- /ko -->
             </div>
             <!-- /ko -->
-            <div class="setDetail" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
+            <div class="setDetail" data-bind="click: workout().addNewSet.bind(workout())" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
                 <img src="Images/add.png" style="height: 16px" /> Add Set
             </div>
         </div>
@@ -291,8 +296,25 @@
         <!-- /ko -->
     </script>
 
-    <script id="tmplModifySet" type="text/html">
-        <!-- ko with: workout().modifiedSet() -->
+    <script id="tmplDialog" type="text/html">
+        <div class="tabControl">
+            <div class="tabItem"><h2>Dialog Name</h2></div>
+        </div>
+        <div class="content">
+            <div style="background-image: url('Images/background.jpg'); background-repeat:no-repeat; background-size:cover; background-position: center; background-attachment: fixed; padding: 0px; height: 100%; overflow: auto">
+                <!-- ko if: uiContentTemplateName() -->
+                <!-- ko template: { name: uiContentTemplateName } --><!-- /ko -->
+                <!-- /ko -->
+            </div>
+        </div>
+        <div style="width: 100%; text-align: center; background: #333333; color: white; border-bottom: solid 1px black; display: flex; flex-direction: row">
+            <h2 data-bind="click: done" style="flex: 1 1; text-align: center; cursor:pointer; padding-left: 5px; border-left: dashed 1px white">OK</h2>
+            <h2 data-bind="click: cancel" style="flex: 1 1; text-align: center; cursor: pointer; padding-right: 5px">Cancel</h2>
+        </div>
+    </script>
+
+    <script id="tmplModifySetDialog" type="text/html">
+        <!-- ko with: modifiedSet -->
             <!-- ko foreach: series() -->
             <div class="setDetail" style="margin: 10px; margin-bottom: 0px">
                 <div style="display: flex; flex-direction: row; border-bottom: solid 1px black" data-bind="style: { backgroundColor: exercise.category.colorDark }">
@@ -302,7 +324,9 @@
                     <div data-bind="click: remove" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/trash.png'); background-position: center; background-repeat: no-repeat; background-color: #ffdddd; background-size: 16px; cursor: pointer" />
                 </div>
                 <div class="setinfo" style="display: flex; flex-direction: row; background: white; height: 45px">
-                    <div style="flex: 1"></div>
+                    <div style="flex: 1">
+                        <span class="highlight link" data-bind="click: addClone">Clone serie</span>
+                    </div>
                     <div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiAmountHasFocus() ? 0 : 5) + 'px' }, click: onAmountClicked">
                         <!-- ko if: !uiAmountHasFocus() -->
                         <span class="bigDigit" data-bind="text: uiAmount" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
@@ -322,12 +346,15 @@
                 </div>
             </div>
             <!-- /ko -->
+            <div class="setDetail" data-bind="click: showAddSerieDialog" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
+                <img src="Images/add.png" style="height: 16px" /> Add Serie
+            </div>
         <!-- /ko -->
-        <div class="setDetail" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
-            <img src="Images/add.png" style="height: 16px" /> Add Serie
-        </div>
-</script>
+    </script>
 
-
+    <script id="tmplAddSerieDialog" type="text/html">
+        <select data-bind="options: categories, optionsText: 'name', value: selectedCategory" /><br />
+        <select data-bind="options: exercises, optionsText: 'name', value: selectedExercise" />
+    </script>
 </body>
 </html>

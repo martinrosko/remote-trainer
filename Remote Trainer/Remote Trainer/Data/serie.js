@@ -196,6 +196,10 @@ var RemoteTrainer;
                     }
                 }
             };
+            Serie.prototype.addClone = function () {
+                // FIXME: clone self, not template
+                this.parent.addSerie(new Serie(this.clone()));
+            };
             Serie.prototype._toggleOptionsPanel = function () {
                 this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
             };
