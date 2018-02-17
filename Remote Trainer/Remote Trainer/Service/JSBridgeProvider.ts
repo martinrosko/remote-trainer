@@ -172,20 +172,15 @@
                     result.id = entity[0].id;
                     result.name = entity[0].properties.name;
                     result.description = entity[0].properties.comments;
-                    //result.uiState(entity.properties[0].statuscode);
+                    result.status(entity[0].properties.statuscode);
                     if (entity[0].properties.started_on)
-                        result.uiStartedOn(new Date(entity[0].properties.actualstart));
+                        result.startedOn(new Date(entity[0].properties.actualstart));
                     if (entity[0].properties.finished_on)
-                        result.uiFinishedOn(new Date(entity[0].properties.actualend));
+                        result.finishedOn(new Date(entity[0].properties.actualend));
 
                     this._loadSets(result.id, sets => {
                         if (sets)
                             sets.forEach(set => result.addSet(set));
-
-                        let entityWriter = new JSBridgeEntityWriter(entity[0]);
-                        entityWriter.subscribeObservableForWriting(result.uiStartedOn, "actualstart");
-                        entityWriter.subscribeObservableForWriting(result.uiFinishedOn, "actualend");
-                        entityWriter.subscribeObservableForWriting(result.uiStatus, "statuscode");
 
                         onLoaded(result);
                     });
@@ -222,11 +217,11 @@
                 err => MobileCRM.bridge.alert("Error getting sets: " + err), this);
         }
 
-        private _loadSet(setEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (set: Data.Set) => void): void {
+        private _loadSet(setEntity: MobileCRM.DynamicEntity, onLoaded: (set: Data.Set) => void): void {
             let set = new Data.Set();
             set.id = setEntity.id;
             set.order(setEntity.properties.order);
-            set.entityWriter = new JSBridgeEntityWriter(setEntity);
+            //set.duration(0);  FIXME: set duration
 
             // load workout sets
             this._loadSeries(set.id, series => {
@@ -264,13 +259,8 @@
                             if (serieEntities[i].properties.finished_on)
                                 serie.uiFinishedOn(new Date(serieEntities[i].properties.finished_on));
 
-                            let entityWriter = new JSBridgeEntityWriter(serieEntities[i]);
-                            entityWriter.subscribeObservableForWriting(serie.uiAmount, "amount");
-                            entityWriter.subscribeObservableForWriting(serie.uiReps, "reps");
-                            entityWriter.subscribeObservableForWriting(serie.difficulty, "difficulty");
-                            entityWriter.subscribeObservableForWriting(serie.uiStartedOn, "started_on");
-                            entityWriter.subscribeObservableForWriting(serie.uiFinishedOn, "finished_on");
-                            entityWriter.subscribeObservableForWriting(serie.uiStatus, "statuscode");
+                            serie.status(serieEntities[i].properties.statuscode);
+                            serie.uiDifficulty(serieEntities[i].properties.difficulty);
 
                             result.push(serie);
                         }
@@ -281,6 +271,97 @@
                     }
                 },
                 err => MobileCRM.bridge.alert("Error getting serie templates: " + err), this);
+        }
+
+        public saveWorkout(workout: Data.Workout, callback: (error: string) => void): void {
+            let jsbWorkout = new MobileCRM.DynamicEntity("workout", workout.id);
+            jsbWorkout.properties["actualstart"] = workout.startedOn();
+            jsbWorkout.properties["actualend"] = workout.finishedOn();
+            jsbWorkout.properties["statuscode"] = workout.status();
+
+            jsbWorkout.save(function (error: string) {
+                if (!error) {
+                    let count = workout.sets().length;
+                    workout.id = this.id;
+                    workout.sets().forEach(set => JSBridgeProvider._saveSet(set, e => {
+                        if (!error && e)
+                            error = e;
+
+                        if (--count === 0)
+                            callback(error);
+                    }), this);
+
+
+                    // FIXME: clear removedSeries after completed
+                    workout.removedSets.forEach(setToRemove => {
+                        MobileCRM.DynamicEntity.deleteById("set", setToRemove, () => {
+                            if (--count === 0)
+                                callback(error);
+                        }, (e) => {
+                            if (--count === 0)
+                                callback(error);
+                        })
+                    });
+                }
+                else
+                    callback(error);
+            });
+        }
+
+        private static _saveSet(set: Data.Set, callback: (error: string) => void): void {
+            let jsbSet = new MobileCRM.DynamicEntity("set", set.id);
+            jsbSet.properties["order"] = set.order();
+            jsbSet.properties["statuscode"] = set.uiStatus();
+            jsbSet.properties["workoutid"] = new MobileCRM.Reference("workout", set.parent.id, "");
+
+            jsbSet.save(function (error: string) {
+                if (!error) {
+                    set.id = this.id;
+                    let count = set.series().length + set.removedSeries.length;
+                    set.series().forEach(serie => JSBridgeProvider._saveSerie(serie, e => {
+                        if (!error && e)
+                            error = e;
+
+                        if (--count === 0)
+                            callback(error);
+                    }));
+
+                    // FIXME: clear removedSeries after completed
+                    set.removedSeries.forEach(serieToRemove => {
+                        MobileCRM.DynamicEntity.deleteById("serie", serieToRemove, () => {
+                            if (--count === 0)
+                                callback(error);
+                        }, (e) => {
+                            if (--count === 0)
+                                callback(error);
+                        })
+                    });
+                }
+                else
+                    callback(error);
+            });
+        }
+
+        private static _saveSerie(serie: Data.Serie, callback: (error: string) => void): void {
+            let jsbSerie = new MobileCRM.DynamicEntity("serie", serie.id);
+            jsbSerie.properties["order"] = serie.order();
+            jsbSerie.properties["amount"] = serie.uiAmount();
+            jsbSerie.properties["reps"] = serie.uiReps();
+            jsbSerie.properties["difficulty"] = serie.difficulty();
+            jsbSerie.properties["started_on"] = serie.uiStartedOn();
+            jsbSerie.properties["finished_on"] = serie.uiFinishedOn();
+            jsbSerie.properties["statuscode"] = serie.status();
+            jsbSerie.properties["setid"] = new MobileCRM.Reference("set", serie.parent.id, "");
+
+            if (!serie.id) {
+                jsbSerie.properties["exercise"] = new MobileCRM.Reference("exercise", serie.exercise.id, "");
+                jsbSerie.properties["name"] = serie.exercise.name;
+            }
+
+            jsbSerie.save(function (error) {
+                serie.id = this.id;
+                callback(error);
+            });
         }
 
         public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date): void {

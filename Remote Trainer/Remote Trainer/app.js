@@ -33,11 +33,6 @@ var RemoteTrainer;
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
-                //this.workout().uiStartedOn(new Date(2018, 1, 7, 21, 0, 0).getTime());
-                //this.workout().uiStatus(Data.WorkoutStatus.Running);
-                //this.workout().sets()[0].series()[0].uiStatus(Data.SerieStatus.Finished);
-                //this.workout().sets()[0].series()[0].uiStartedOn(new Date(2018, 1, 7, 21, 1, 0));
-                //this.workout().sets()[0].series()[0].uiFinishedOn(new Date(2018, 1, 7, 21, 2, 0));
                 ko.applyBindings(this);
             }
             else {
@@ -47,7 +42,8 @@ var RemoteTrainer;
                     _this.exercises = exercises;
                     _this.m_workoutTemplates = workouts;
                     if (!workoutId) {
-                        _this.m_dataProvider.instantiateWorkout(_this.m_workoutTemplates[0], "FitUP: Prsia, Biceps", new Date(2018, 1, 9, 8));
+                        var workoutTemplate = _this.m_workoutTemplates.filter(function (wt) { return wt.name.startsWith("Chrbat"); });
+                        _this.m_dataProvider.instantiateWorkout(workoutTemplate[0], "FitUP: Chrbat, Triceps", new Date(2018, 1, 17, 8));
                     }
                     else {
                         _this.m_dataProvider.loadWorkout(workoutId, function (workout) {
@@ -58,7 +54,10 @@ var RemoteTrainer;
                             }, function (err) {
                                 MobileCRM.bridge.alert("Unable to set dirty flag");
                             }, _this);
-                            //this.workout().start();
+                            MobileCRM.UI.EntityForm.onSave(function (form) {
+                                var suspendHandler = form.suspendSave();
+                                _this.m_dataProvider.saveWorkout(_this.workout(), function (error) { return suspendHandler.resumeSave(error); });
+                            }, true, _this);
                             ko.applyBindings(_this);
                         });
                     }
@@ -220,13 +219,12 @@ var RemoteTrainer;
             this.m_workoutTemplate.name = "Chrbat / Triceps";
             this.m_workoutTemplate.description = "Bla bla bla bla...";
             var set = new RemoteTrainer.Data.SetTemplate();
-            var serie1 = new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
             this.m_workoutTemplate.addSet(set);
             set = new RemoteTrainer.Data.SetTemplate();
-            serie1 = new RemoteTrainer.Data.SerieTemplate(this.exercises[6], 10, 50);
+            var serie1 = new RemoteTrainer.Data.SerieTemplate(this.exercises[6], 10, 50);
             var serie2 = new RemoteTrainer.Data.SerieTemplate(this.exercises[1], 30);
             set.addSerie(serie1);
             set.addSerie(serie2);

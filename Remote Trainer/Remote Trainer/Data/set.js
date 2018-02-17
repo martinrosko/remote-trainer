@@ -16,6 +16,8 @@ var RemoteTrainer;
             function SetTemplate() {
                 this.serieTemplates = [];
                 this.order = ko.observable();
+                if (RemoteTrainer.DEMODATA)
+                    this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
             }
             SetTemplate.prototype.addSerie = function (serie) {
                 this.serieTemplates.push(serie);
@@ -23,7 +25,9 @@ var RemoteTrainer;
                 serie.order(this.serieTemplates.length);
             };
             SetTemplate.prototype.copyTo = function (dst) {
-                dst.order = this.order;
+                dst.id = this.id;
+                dst.order(this.order());
+                dst.name = this.name;
             };
             return SetTemplate;
         }());
@@ -34,8 +38,8 @@ var RemoteTrainer;
                 var _this = _super.call(this) || this;
                 _this.next = ko.observable(null);
                 _this.previous = ko.observable(null);
-                _this.breaks = [ko.observable("")];
                 _this.series = ko.observableArray();
+                _this.removedSeries = [];
                 _this.exercises = ko.computed(function () {
                     var series = _this.series();
                     var result = [];
@@ -49,21 +53,33 @@ var RemoteTrainer;
                     template.copyTo(_this);
                     template.serieTemplates.forEach(function (serieTemplate) { return _this.addSerie(new Data.Serie(serieTemplate)); }, _this);
                 }
+                _this.status = ko.observable(SetStatus.Queued);
                 _this.uiStatus = ko.computed(function () {
-                    var series = _this.series();
-                    var serieStatuses = series.map(function (s) { return s.uiStatus(); });
-                    if (serieStatuses.every(function (status) { return status === Data.SerieStatus.Queued; }))
-                        return Data.SerieStatus.Queued;
-                    else if (serieStatuses.every(function (status) { return status === Data.SerieStatus.Finished; }))
-                        return Data.SerieStatus.Finished;
-                    else if (serieStatuses.some(function (status) { return status === Data.SerieStatus.Paused; }))
-                        return Data.SerieStatus.Paused;
-                    else if (serieStatuses[0] === Data.SerieStatus.Ready)
-                        return Data.SerieStatus.Ready;
-                    return Data.SerieStatus.Running;
+                    var status = _this.status();
+                    if ((status === SetStatus.Ready || status === SetStatus.Running) && (_this.parent && _this.parent.status() === Data.WorkoutStatus.Paused))
+                        return SetStatus.Paused;
+                    return status;
+                }, _this);
+                _this.uiStatus.subscribe(function (value) {
+                    switch (value) {
+                        case SetStatus.Queued:
+                        case SetStatus.Paused:
+                        case SetStatus.Finished:
+                            _this._removeRunningTimer();
+                            break;
+                        case SetStatus.Running:
+                            _this.m_runningTimer = new RemoteTrainer.GlobalTimer();
+                            _this.m_runningTimer.fn = _this._onRunningTick.bind(_this);
+                            RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_runningTimer);
+                            break;
+                        case SetStatus.Ready:
+                            if (_this.series().length > 0)
+                                _this.series()[0].status(Data.SerieStatus.Ready);
+                            break;
+                    }
                 }, _this);
                 _this.uiAverageDifficulty = ko.computed(function () {
-                    if (_this.uiStatus() === Data.SerieStatus.Finished && _this.series().length > 0) {
+                    if (_this.uiStatus() === SetStatus.Finished && _this.series().length > 0) {
                         var total = 0;
                         _this.series().forEach(function (s) { return total += s.difficulty(); });
                         return (total / _this.series().length).toFixed(2);
@@ -84,16 +100,19 @@ var RemoteTrainer;
                     var exercising = _this.exercising();
                     return RemoteTrainer.Program.instance.spanToTimeLabel(exercising);
                 }, _this);
-                _this.m_breakTimer = new RemoteTrainer.GlobalTimer();
-                _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSetSettings");
                 _this.uiOptionsPanelState = ko.observable(Data.OptionPanelState.Closed);
                 return _this;
             }
+            Set.prototype._removeRunningTimer = function () {
+                var runningTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
+                if (runningTimerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
+            };
             Set.prototype.addSerie = function (serie) {
                 var index = this.series().length;
                 serie.parent = this;
-                serie.order(index);
+                serie.order(index + 1);
                 this.series.push(serie);
                 if (index > 0) {
                     this.series()[index - 1].next(serie);
@@ -101,57 +120,15 @@ var RemoteTrainer;
                 }
                 if (this.exercises().indexOf(serie.exercise) < 0)
                     this.exercises().push(serie.exercise);
-                this.breaks.push(ko.observable(""));
-            };
-            Set.prototype._onBreakTick = function (context) {
-                var now = Math.round(new Date().getTime() / 1000);
-                this.breaks[context.index](RemoteTrainer.Program.instance.spanToTimeLabel(now - context.breakStart));
             };
             Set.prototype._onRunningTick = function (context) {
-                var now = Math.round(new Date().getTime() / 1000);
-                this.duration(now - context);
+                this.duration(this.duration() + 1);
             };
-            Set.prototype.startBreak = function (index) {
-                this.breaks[index](RemoteTrainer.Program.instance.spanToTimeLabel(0));
-                // subscribe to global timer
-                this.m_breakTimer.context = { index: index, breakStart: Math.round(new Date().getTime() / 1000) };
-                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_breakTimer);
-            };
-            Set.prototype.stopBreak = function (index) {
-                // unsubscribe to global timer
-                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
-                if (timerIndex >= 0) {
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
-                    // if stopping first break it means that we are starting exercising in this set
-                    // -> start the duration timer
-                    // -> stop the last break in previous set (it was showing the break on previous page)
-                    if (index === 0) {
-                        this.m_runningTimer = new RemoteTrainer.GlobalTimer();
-                        this.m_runningTimer.context = Math.round(Date.now() / 1000);
-                        this.m_runningTimer.fn = this._onRunningTick.bind(this);
-                        RemoteTrainer.Program.instance.GlobalTimer.push(this.m_runningTimer);
-                        if (this.previous())
-                            this.previous().stopBreak(this.previous().breaks.length - 1);
-                    }
-                }
-            };
-            Set.prototype.serieStatusChanged = function (serie, status) {
-                var index = this.series().indexOf(serie) + 1;
-                if (status === Data.SerieStatus.Finished) {
-                    this.startBreak(index);
-                    //this.parent.updateCompletionStatus();
-                }
-                else if (status === Data.SerieStatus.Running)
-                    this.stopBreak(index - 1);
-            };
-            Set.prototype.start = function () {
-                this.series()[0].uiStatus(Data.SerieStatus.Ready);
-                this.startBreak(0);
-            };
-            Set.prototype.stop = function () {
-                var runningTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
-                if (runningTimerIndex >= 0)
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
+            Set.prototype.resume = function () {
+                this.m_runningTimer = new RemoteTrainer.GlobalTimer();
+                this.m_runningTimer.context = Math.round(Date.now() / 1000);
+                this.m_runningTimer.fn = this._onRunningTick.bind(this);
+                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_runningTimer);
             };
             Set.prototype.show = function () {
                 this.parent.displayedSet(this);
@@ -166,7 +143,7 @@ var RemoteTrainer;
                     this.parent.displayedSet(this.next());
             };
             Set.prototype.showRunningSet = function () {
-                var set = this.parent.sets().filter(function (s) { return s.uiStatus() === Data.SerieStatus.Running || s.uiStatus() === Data.SerieStatus.Ready; });
+                var set = this.parent.sets().filter(function (s) { return s.status() === SetStatus.Running || s.status() === SetStatus.Ready; });
                 if (set.length > 0)
                     this.parent.displayedSet(set[0]);
             };
@@ -176,8 +153,8 @@ var RemoteTrainer;
             Set.prototype.moveDown = function () {
                 if (this.next()) {
                     var sets = this.parent.sets();
-                    sets.splice(this.order(), 1);
-                    sets.splice(this.order() + 1, 0, this);
+                    sets.splice(this.order() - 1, 1);
+                    sets.splice(this.order(), 0, this);
                     this.next().order(this.order());
                     this.order(this.order() + 1);
                     var nextSet = this.next();
@@ -191,13 +168,17 @@ var RemoteTrainer;
                     if (previousSet)
                         previousSet.next(this.previous());
                     this.parent.sets.valueHasMutated();
+                    //if (this.uiStatus() === SetStatus.Ready) {
+                    //    this.previous().ready(this.series()[0].break());    // set the actual lenght of current break to new set that is ready
+                    //    this.queue();
+                    //}
                 }
             };
             Set.prototype.moveUp = function () {
-                if (this.previous()) {
+                if (this.previous() && (this.previous().uiStatus() === SetStatus.Queued || this.previous().uiStatus() === SetStatus.Ready)) {
                     var sets = this.parent.sets();
-                    sets.splice(this.order(), 1);
-                    sets.splice(this.order() - 1, 0, this);
+                    sets.splice(this.order() - 1, 1);
+                    sets.splice(this.order() - 2, 0, this);
                     this.previous().order(this.order());
                     this.order(this.order() - 1);
                     var previousSet = this.previous();
@@ -211,16 +192,17 @@ var RemoteTrainer;
                     if (nextSet)
                         nextSet.previous(this.next());
                     this.parent.sets.valueHasMutated();
-                    if (this.next().uiStatus() === Data.SerieStatus.Ready) {
-                        // FIXME: create postpone method that  handles breaks and uiStatus in separate method
-                        this.next().series()[0].uiStatus(Data.SerieStatus.Queued);
-                        this.start();
-                    }
+                    //if (this.next().uiStatus() === SetStatus.Ready) {
+                    //    this.ready(this.next().series()[0].break());
+                    //    this.next().queue();
+                    //}
                 }
             };
             Set.prototype.remove = function () {
                 if (confirm("Remove the entire set?")) {
-                    this.parent.sets.splice(this.order(), 1);
+                    this.parent.sets.splice(this.order() - 1, 1);
+                    if (this.parent.removedSets.indexOf(this.id) < 0)
+                        this.parent.removedSets.push(this.id);
                     if (this.previous())
                         this.previous().next(this.next());
                     if (this.next())
@@ -232,12 +214,31 @@ var RemoteTrainer;
                     }
                 }
             };
+            Set.prototype.copyTo = function (dst) {
+                _super.prototype.copyTo.call(this, dst);
+                dst.duration(this.duration());
+                dst.series([]);
+                this.series().forEach(function (serie) { return dst.addSerie(serie.clone()); });
+            };
+            Set.prototype.clone = function () {
+                var result = new Set();
+                this.copyTo(result);
+                return result;
+            };
             Set.prototype.modifySet = function (set) {
+                var _this = this;
                 //todo: clone set and modify it only if dialogresult = true
-                var dialog = new ModifySetDialog(set);
+                var clonedSet = set.clone();
+                var dialog = new ModifySetDialog(clonedSet);
                 dialog.closed.add(this, function (sender, e) {
                     if (dialog.dialogResult) {
-                        alert('modified');
+                        var series = set.series();
+                        series.forEach(function (oldSerie) {
+                            // if there is not a serie with old id in new set of series, add it to deleted series, it must be removed from
+                            if (!clonedSet.series().firstOrDefault(function (clonedSerie) { return clonedSerie.id === oldSerie.id; }) && set.removedSeries.indexOf(oldSerie.id) < 0)
+                                set.removedSeries.push(oldSerie.id);
+                        }, _this);
+                        clonedSet.copyTo(set);
                     }
                 });
                 RemoteTrainer.Program.instance.showDialog(dialog);
@@ -288,6 +289,14 @@ var RemoteTrainer;
             return AddSerieDialog;
         }(RemoteTrainer.Dialog));
         Data.AddSerieDialog = AddSerieDialog;
+        var SetStatus;
+        (function (SetStatus) {
+            SetStatus[SetStatus["Queued"] = 1] = "Queued";
+            SetStatus[SetStatus["Finished"] = 2] = "Finished";
+            SetStatus[SetStatus["Ready"] = 10000] = "Ready";
+            SetStatus[SetStatus["Running"] = 10001] = "Running";
+            SetStatus[SetStatus["Paused"] = 10002] = "Paused";
+        })(SetStatus = Data.SetStatus || (Data.SetStatus = {}));
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=set.js.map

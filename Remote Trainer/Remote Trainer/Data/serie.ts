@@ -12,9 +12,12 @@
             this.reps = reps;
             this.amount = amount;
             this.order = ko.observable<number>();
+            if (DEMODATA)
+                this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
         }
 
         public copyTo(dst: SerieTemplate): void {
+            dst.id = this.id;
             dst.exercise = this.exercise;
             dst.order(this.order());
             dst.amount = this.amount;
@@ -29,7 +32,8 @@
     }
 
     export class Serie extends SerieTemplate {
-        public uiStatus: KnockoutObservable<SerieStatus>;
+        public uiStatus: KnockoutComputed<SerieStatus>;
+        public status: KnockoutObservable<SerieStatus>;
         public uiStartedOn: KnockoutObservable<Date>;
         public uiFinishedOn: KnockoutObservable<Date>;
         public duration: KnockoutObservable<number>;
@@ -43,10 +47,13 @@
         public uiOptionsContentTemplate: KnockoutObservable<string>;
         public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
         public uiCountDown: KnockoutObservable<number>;
+        public break: KnockoutObservable<number>;
+        public uiBreakLabel: KnockoutComputed<string>;
         public exercise: Exercise;
 		public parent: Set;
         public next: KnockoutObservable<Serie>;
         public previous: KnockoutObservable<Serie>;
+        public countDownTimer: KnockoutObservable<GlobalTimer>;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -71,11 +78,55 @@
 
             this.uiDifficulty = ko.observable<string>(Serie.difficulties[3]);
 
-            this.uiStatus = ko.observable(SerieStatus.Queued);
-			this.uiStatus.subscribe(value => {
-				if (this.parent)
-					this.parent.serieStatusChanged(this, value);
-			}, this);
+            this.countDownTimer = ko.observable<GlobalTimer>();
+
+            this.status = ko.observable(SerieStatus.Queued);
+            this.uiStatus = ko.computed(() => {
+                let status = this.status();
+                let countDownCounter = this.countDownTimer();
+
+                if ((status === SerieStatus.Ready || status === SerieStatus.Running) && (this.parent && this.parent.parent && this.parent.parent.status() === WorkoutStatus.Paused))
+                    return SerieStatus.Paused;
+                else if (countDownCounter)
+                    return SerieStatus.Countdown;
+
+                return status;
+            }, this);
+
+            this.uiStatus.subscribe(value => {
+                switch (value) {
+                    case SerieStatus.Ready:
+                        Program.instance.GlobalTimer.push(this.m_breakTimer);
+                        break;
+
+                    case SerieStatus.Queued: {
+                        let index = Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
+                        if (index >= 0)
+                            Program.instance.GlobalTimer.splice(index, 1);
+
+                        this.break(0);
+                        break;
+                    }
+
+                    case SerieStatus.Running: {
+                        if (!this.m_bDoNotCountDown)
+                            this._startCountDown();
+                        else
+                            this.m_bDoNotCountDown = false;
+                        break;
+                    }
+
+                    case SerieStatus.Paused: {
+                        // unsubscribe the duration timer
+                        let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+                        if (timerIndex >= 0)
+                            Program.instance.GlobalTimer.splice(timerIndex, 1);
+
+                        this.status(SerieStatus.Ready);
+                        break;
+                    }
+                }
+            }, this);
 
             this.uiStartedOn = ko.observable<Date>();
             this.uiFinishedOn = ko.observable<Date>();
@@ -95,48 +146,43 @@
                 return Serie.difficulties.indexOf(diffLabel) + 1;
             }, this);
 
+            this.break = ko.observable<number>(0);
+
+            this.uiBreakLabel = ko.computed(() => {
+                let b = this.break();
+                return Program.instance.spanToTimeLabel(b);
+            });
+
+            this.m_breakTimer = new GlobalTimer();
+            this.m_breakTimer.fn = this._onBreakTick.bind(this);
+
             this.next = ko.observable<Serie>();
             this.previous = ko.observable<Serie>();
         }
 
-		public activate(): void {
-			this.uiStatus(SerieStatus.Ready);
-		}
-
-		public start(): void {
-			this.uiStatus(SerieStatus.Running);
-		}
+        private _onBreakTick(context: any): void {
+            this.break(this.break() + 1);
+        }
 
         public onStatusClicked(): void {
             var status = this.uiStatus();
 
             switch (status) {
-                case SerieStatus.Queued:
-                    //this.uiOptionsPanelState(OptionPanelState.Closed);
-                    //this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
+                case SerieStatus.Paused:
+                    this.parent.parent.resume();
+                    this._startCountDown();
                     break;
 
-                case SerieStatus.Ready: {
-                    this.uiOptionsPanelState(OptionPanelState.Opened);
-                    // if not counting down already -> start countdown
-                    let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
-                    if (timerIndex < 0) {
-                        this.uiCountDown(10);
-                        this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-
-                        this.m_countDownTimer = new GlobalTimer();
-                        this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
-                        Program.instance.GlobalTimer.push(this.m_countDownTimer);
-                    }
-                    else {
-                        // otherwise skip countdown and start exercising immediately (second click on 'start' button)
-                        this._stopCountDown();
-                    }
+                case SerieStatus.Ready:
+                    this._startCountDown();
                     break;
-                }
+
+                case SerieStatus.Countdown:
+                    this._stopCountDown();
+                    break;
 
                 case SerieStatus.Running: {
-                    this.uiStatus(SerieStatus.Finished);
+                    this.status(SerieStatus.Finished);
                     this.uiOptionsPanelState(OptionPanelState.Closed);
                     this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                     this.uiFinishedOn(moment(this.uiStartedOn()).add(this.duration(), "second").toDate());
@@ -147,17 +193,15 @@
                         Program.instance.GlobalTimer.splice(timerIndex, 1);
 
                     if (this.next()) {
-                        this.next().uiStatus(SerieStatus.Ready);
+                        this.next().status(SerieStatus.Ready);
                     }
                     else {
                         // finish set
                         let set = (<Set>this.parent);
-                        set.stop();
+                        set.status(SetStatus.Finished);
 
                         if (set.next())
-                            set.next().start();
-                        else
-                            (<Workout>set.parent).stop();
+                            set.next().status(SetStatus.Ready);
                     }
                     break;
                 }
@@ -179,8 +223,8 @@
         public moveDown(): void {
             if (this.next()) {
                 let series = this.parent.series();
-                series.splice(this.order(), 1);
-                series.splice(this.order() + 1, 0, this);
+                series.splice(this.order() - 1, 1);
+                series.splice(this.order(), 0, this);
                 this.next().order(this.order());
                 this.order(this.order() + 1);
 
@@ -203,8 +247,8 @@
         public moveUp(): void {
             if (this.previous()) {
                 let series = this.parent.series();
-                series.splice(this.order(), 1);
-                series.splice(this.order() - 1, 0, this);
+                series.splice(this.order() - 1, 1);
+                series.splice(this.order() - 2, 0, this);
                 this.previous().order(this.order());
                 this.order(this.order() - 1);
 
@@ -232,7 +276,7 @@
 
         public remove(): void {
             if (confirm("Remove the serie?")) {
-                this.parent.series.splice(this.order(), 1);
+                this.parent.series.splice(this.order() - 1, 1);
 
                 if (this.previous())
                     this.previous().next(this.next());
@@ -247,6 +291,22 @@
             }
         }
 
+        public copyTo(dst: Serie): void {
+            super.copyTo(dst);
+            dst.uiAmount(this.uiAmount());
+            dst.uiReps(this.uiReps());
+            dst.uiStartedOn(this.uiStartedOn());
+            dst.uiFinishedOn(this.uiFinishedOn());
+            dst.duration(this.duration());
+            dst.status(this.status());
+        }
+
+        public clone(): Serie {
+            let result = new Serie();
+            this.copyTo(result);
+            return result;
+        }
+
         public addClone(): void {
             // FIXME: clone self, not template
             this.parent.addSerie(new Serie(this.clone()));
@@ -256,23 +316,44 @@
             this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
         }
 
+        private _startCountDown(): void {
+            this.uiOptionsPanelState(OptionPanelState.Opened);
+            // if not counting down already -> start countdown
+            let timerIndex = Program.instance.GlobalTimer.indexOf(this.countDownTimer());
+            if (timerIndex < 0) {
+                this.uiCountDown(10);
+                this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+
+                this.countDownTimer(new GlobalTimer());
+                this.countDownTimer().fn = this._onCountDownTimer.bind(this);
+                Program.instance.GlobalTimer.push(this.countDownTimer());
+            }
+        }
+
+        private m_bDoNotCountDown: boolean;
         private _stopCountDown(): void {
             if (this.uiCountDown() > 0)
                 this.uiCountDown(0)
 
             // unsubscribe countdown timer
-            let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
-            if (timerIndex >= 0)
+            let timerIndex = Program.instance.GlobalTimer.indexOf(this.countDownTimer());
+            if (timerIndex >= 0) {
                 Program.instance.GlobalTimer.splice(timerIndex, 1);
-
-            // start the exercise
-            this.uiStatus(SerieStatus.Running);
-            var now = new Date();
-            this.uiStartedOn(now);
-            this.duration(0);
+                this.countDownTimer(null);
+            }
 
             // stop current break;
-            (<Set>this.parent).stopBreak(this.order());
+            let breakTimerIndex = Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
+            if (breakTimerIndex >= 0)
+                Program.instance.GlobalTimer.splice(breakTimerIndex, 1);
+
+            this.m_bDoNotCountDown = true;
+            this.status(SerieStatus.Running);
+            if (this.order() === 1)
+                this.parent.status(SetStatus.Running);
+
+            var now = new Date();
+            this.uiStartedOn(now);
 
             // subscribe duration timer to global timer
             this.m_durationTimer = new GlobalTimer();
@@ -290,8 +371,8 @@
             this.duration(this.duration() + 1);
         }
 
-        private m_countDownTimer: GlobalTimer;
         private m_durationTimer: GlobalTimer;
+        private m_breakTimer: GlobalTimer;
     }
 
     export enum SerieStatus {
@@ -300,6 +381,7 @@
         Ready = 10000,
         Running = 10001,
         Paused = 10002,
+        Countdown = 10003,
     }
 
     export enum OptionPanelState {

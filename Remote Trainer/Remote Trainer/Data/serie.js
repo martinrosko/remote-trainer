@@ -18,8 +18,11 @@ var RemoteTrainer;
                 this.reps = reps;
                 this.amount = amount;
                 this.order = ko.observable();
+                if (RemoteTrainer.DEMODATA)
+                    this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
             }
             SerieTemplate.prototype.copyTo = function (dst) {
+                dst.id = this.id;
                 dst.exercise = this.exercise;
                 dst.order(this.order());
                 dst.amount = this.amount;
@@ -50,10 +53,45 @@ var RemoteTrainer;
                     // FIXME: validate value
                 }, _this);
                 _this.uiDifficulty = ko.observable(Serie.difficulties[3]);
-                _this.uiStatus = ko.observable(SerieStatus.Queued);
+                _this.countDownTimer = ko.observable();
+                _this.status = ko.observable(SerieStatus.Queued);
+                _this.uiStatus = ko.computed(function () {
+                    var status = _this.status();
+                    var countDownCounter = _this.countDownTimer();
+                    if ((status === SerieStatus.Ready || status === SerieStatus.Running) && (_this.parent && _this.parent.parent && _this.parent.parent.status() === Data.WorkoutStatus.Paused))
+                        return SerieStatus.Paused;
+                    else if (countDownCounter)
+                        return SerieStatus.Countdown;
+                    return status;
+                }, _this);
                 _this.uiStatus.subscribe(function (value) {
-                    if (_this.parent)
-                        _this.parent.serieStatusChanged(_this, value);
+                    switch (value) {
+                        case SerieStatus.Ready:
+                            RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_breakTimer);
+                            break;
+                        case SerieStatus.Queued: {
+                            var index = RemoteTrainer.Program.instance.GlobalTimer.indexOf(_this.m_breakTimer);
+                            if (index >= 0)
+                                RemoteTrainer.Program.instance.GlobalTimer.splice(index, 1);
+                            _this.break(0);
+                            break;
+                        }
+                        case SerieStatus.Running: {
+                            if (!_this.m_bDoNotCountDown)
+                                _this._startCountDown();
+                            else
+                                _this.m_bDoNotCountDown = false;
+                            break;
+                        }
+                        case SerieStatus.Paused: {
+                            // unsubscribe the duration timer
+                            var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(_this.m_durationTimer);
+                            if (timerIndex >= 0)
+                                RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                            _this.status(SerieStatus.Ready);
+                            break;
+                        }
+                    }
                 }, _this);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
@@ -69,42 +107,35 @@ var RemoteTrainer;
                     var diffLabel = _this.uiDifficulty();
                     return Serie.difficulties.indexOf(diffLabel) + 1;
                 }, _this);
+                _this.break = ko.observable(0);
+                _this.uiBreakLabel = ko.computed(function () {
+                    var b = _this.break();
+                    return RemoteTrainer.Program.instance.spanToTimeLabel(b);
+                });
+                _this.m_breakTimer = new RemoteTrainer.GlobalTimer();
+                _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
                 _this.next = ko.observable();
                 _this.previous = ko.observable();
                 return _this;
             }
-            Serie.prototype.activate = function () {
-                this.uiStatus(SerieStatus.Ready);
-            };
-            Serie.prototype.start = function () {
-                this.uiStatus(SerieStatus.Running);
+            Serie.prototype._onBreakTick = function (context) {
+                this.break(this.break() + 1);
             };
             Serie.prototype.onStatusClicked = function () {
                 var status = this.uiStatus();
                 switch (status) {
-                    case SerieStatus.Queued:
-                        //this.uiOptionsPanelState(OptionPanelState.Closed);
-                        //this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
+                    case SerieStatus.Paused:
+                        this.parent.parent.resume();
+                        this._startCountDown();
                         break;
-                    case SerieStatus.Ready: {
-                        this.uiOptionsPanelState(OptionPanelState.Opened);
-                        // if not counting down already -> start countdown
-                        var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
-                        if (timerIndex < 0) {
-                            this.uiCountDown(10);
-                            this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                            this.m_countDownTimer = new RemoteTrainer.GlobalTimer();
-                            this.m_countDownTimer.fn = this._onCountDownTimer.bind(this);
-                            RemoteTrainer.Program.instance.GlobalTimer.push(this.m_countDownTimer);
-                        }
-                        else {
-                            // otherwise skip countdown and start exercising immediately (second click on 'start' button)
-                            this._stopCountDown();
-                        }
+                    case SerieStatus.Ready:
+                        this._startCountDown();
                         break;
-                    }
+                    case SerieStatus.Countdown:
+                        this._stopCountDown();
+                        break;
                     case SerieStatus.Running: {
-                        this.uiStatus(SerieStatus.Finished);
+                        this.status(SerieStatus.Finished);
                         this.uiOptionsPanelState(OptionPanelState.Closed);
                         this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                         this.uiFinishedOn(moment(this.uiStartedOn()).add(this.duration(), "second").toDate());
@@ -113,16 +144,14 @@ var RemoteTrainer;
                         if (timerIndex >= 0)
                             RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
                         if (this.next()) {
-                            this.next().uiStatus(SerieStatus.Ready);
+                            this.next().status(SerieStatus.Ready);
                         }
                         else {
                             // finish set
                             var set = this.parent;
-                            set.stop();
+                            set.status(Data.SetStatus.Finished);
                             if (set.next())
-                                set.next().start();
-                            else
-                                set.parent.stop();
+                                set.next().status(Data.SetStatus.Ready);
                         }
                         break;
                     }
@@ -140,8 +169,8 @@ var RemoteTrainer;
             Serie.prototype.moveDown = function () {
                 if (this.next()) {
                     var series = this.parent.series();
-                    series.splice(this.order(), 1);
-                    series.splice(this.order() + 1, 0, this);
+                    series.splice(this.order() - 1, 1);
+                    series.splice(this.order(), 0, this);
                     this.next().order(this.order());
                     this.order(this.order() + 1);
                     var nextSet = this.next();
@@ -160,8 +189,8 @@ var RemoteTrainer;
             Serie.prototype.moveUp = function () {
                 if (this.previous()) {
                     var series = this.parent.series();
-                    series.splice(this.order(), 1);
-                    series.splice(this.order() - 1, 0, this);
+                    series.splice(this.order() - 1, 1);
+                    series.splice(this.order() - 2, 0, this);
                     this.previous().order(this.order());
                     this.order(this.order() - 1);
                     var previousSet = this.previous();
@@ -184,7 +213,7 @@ var RemoteTrainer;
             };
             Serie.prototype.remove = function () {
                 if (confirm("Remove the serie?")) {
-                    this.parent.series.splice(this.order(), 1);
+                    this.parent.series.splice(this.order() - 1, 1);
                     if (this.previous())
                         this.previous().next(this.next());
                     if (this.next())
@@ -196,6 +225,20 @@ var RemoteTrainer;
                     }
                 }
             };
+            Serie.prototype.copyTo = function (dst) {
+                _super.prototype.copyTo.call(this, dst);
+                dst.uiAmount(this.uiAmount());
+                dst.uiReps(this.uiReps());
+                dst.uiStartedOn(this.uiStartedOn());
+                dst.uiFinishedOn(this.uiFinishedOn());
+                dst.duration(this.duration());
+                dst.status(this.status());
+            };
+            Serie.prototype.clone = function () {
+                var result = new Serie();
+                this.copyTo(result);
+                return result;
+            };
             Serie.prototype.addClone = function () {
                 // FIXME: clone self, not template
                 this.parent.addSerie(new Serie(this.clone()));
@@ -203,20 +246,37 @@ var RemoteTrainer;
             Serie.prototype._toggleOptionsPanel = function () {
                 this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
             };
+            Serie.prototype._startCountDown = function () {
+                this.uiOptionsPanelState(OptionPanelState.Opened);
+                // if not counting down already -> start countdown
+                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.countDownTimer());
+                if (timerIndex < 0) {
+                    this.uiCountDown(10);
+                    this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                    this.countDownTimer(new RemoteTrainer.GlobalTimer());
+                    this.countDownTimer().fn = this._onCountDownTimer.bind(this);
+                    RemoteTrainer.Program.instance.GlobalTimer.push(this.countDownTimer());
+                }
+            };
             Serie.prototype._stopCountDown = function () {
                 if (this.uiCountDown() > 0)
                     this.uiCountDown(0);
                 // unsubscribe countdown timer
-                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_countDownTimer);
-                if (timerIndex >= 0)
+                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.countDownTimer());
+                if (timerIndex >= 0) {
                     RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
-                // start the exercise
-                this.uiStatus(SerieStatus.Running);
+                    this.countDownTimer(null);
+                }
+                // stop current break;
+                var breakTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
+                if (breakTimerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(breakTimerIndex, 1);
+                this.m_bDoNotCountDown = true;
+                this.status(SerieStatus.Running);
+                if (this.order() === 1)
+                    this.parent.status(Data.SetStatus.Running);
                 var now = new Date();
                 this.uiStartedOn(now);
-                this.duration(0);
-                // stop current break;
-                this.parent.stopBreak(this.order());
                 // subscribe duration timer to global timer
                 this.m_durationTimer = new RemoteTrainer.GlobalTimer();
                 this.m_durationTimer.fn = this._onDurationTimer.bind(this);
@@ -241,6 +301,7 @@ var RemoteTrainer;
             SerieStatus[SerieStatus["Ready"] = 10000] = "Ready";
             SerieStatus[SerieStatus["Running"] = 10001] = "Running";
             SerieStatus[SerieStatus["Paused"] = 10002] = "Paused";
+            SerieStatus[SerieStatus["Countdown"] = 10003] = "Countdown";
         })(SerieStatus = Data.SerieStatus || (Data.SerieStatus = {}));
         var OptionPanelState;
         (function (OptionPanelState) {

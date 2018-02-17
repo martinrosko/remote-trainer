@@ -15,7 +15,6 @@
         }
 
         public workout: KnockoutObservable<Data.Workout>;
-        //public activeSet: KnockoutObservable<Data.Set>;
         public uiContentTemplateName: KnockoutObservable<string>;
         public uiFooterTemplateName: KnockoutObservable<string>;
         public uiSelectedTabIndex: KnockoutObservable<number>;
@@ -42,13 +41,6 @@
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
-
-                //this.workout().uiStartedOn(new Date(2018, 1, 7, 21, 0, 0).getTime());
-                //this.workout().uiStatus(Data.WorkoutStatus.Running);
-
-                //this.workout().sets()[0].series()[0].uiStatus(Data.SerieStatus.Finished);
-                //this.workout().sets()[0].series()[0].uiStartedOn(new Date(2018, 1, 7, 21, 1, 0));
-                //this.workout().sets()[0].series()[0].uiFinishedOn(new Date(2018, 1, 7, 21, 2, 0));
                 ko.applyBindings(this);
             }
             else {
@@ -60,7 +52,9 @@
                     this.m_workoutTemplates = workouts;
 
                     if (!workoutId) {
-                        this.m_dataProvider.instantiateWorkout(this.m_workoutTemplates[0], "FitUP: Prsia, Biceps", new Date(2018, 1, 9, 8));
+                        let workoutTemplate = this.m_workoutTemplates.filter(wt => wt.name.startsWith("Chrbat"));
+
+                        this.m_dataProvider.instantiateWorkout(workoutTemplate[0], "FitUP: Chrbat, Triceps", new Date(2018, 1, 17, 8));
                     }
                     else {
                         this.m_dataProvider.loadWorkout(workoutId, workout => {
@@ -71,9 +65,14 @@
                                 entityForm.isDirty = true;
                             }, function (err) {
                                 MobileCRM.bridge.alert("Unable to set dirty flag");
-                            }, this);
+                                }, this);
 
-                            //this.workout().start();
+                            MobileCRM.UI.EntityForm.onSave(form => {
+                                var suspendHandler = form.suspendSave();
+
+                                this.m_dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
+                            }, true, this);
+
                             ko.applyBindings(this);
                         });
                     }
@@ -244,15 +243,14 @@
             this.m_workoutTemplate.description = "Bla bla bla bla..."
 
             var set = new Data.SetTemplate();
-            var serie1 = new Data.SerieTemplate(this.exercises[7], 20, 10);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
 
             this.m_workoutTemplate.addSet(set);
 
             set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[6], 10, 50);
+            var serie1 = new Data.SerieTemplate(this.exercises[6], 10, 50);
             var serie2 = new Data.SerieTemplate(this.exercises[1], 30);
             set.addSerie(serie1);
             set.addSerie(serie2);

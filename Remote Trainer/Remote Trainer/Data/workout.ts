@@ -23,9 +23,10 @@
 
     export class Workout extends WorkoutTemplate {
         public sets: KnockoutObservableArray<Set>;
-        public uiStatus: KnockoutObservable<WorkoutStatus>;
-        public uiStartedOn: KnockoutObservable<Date>;
-        public uiFinishedOn: KnockoutObservable<Date>;
+        public removedSets: string[]; // just ids
+        public status: KnockoutObservable<WorkoutStatus>;
+        public startedOn: KnockoutObservable<Date>;
+        public finishedOn: KnockoutObservable<Date>;
         public duration: KnockoutObservable<number>;
         public uiDuration: KnockoutComputed<string>;
         public completition: KnockoutComputed<number>;
@@ -36,10 +37,11 @@
         constructor(template?: WorkoutTemplate) {
             super();
 
-            this.uiStatus = ko.observable(WorkoutStatus.Ready);
-            this.uiStartedOn = ko.observable<Date>();
-            this.uiFinishedOn = ko.observable<Date>();
+            this.status = ko.observable(WorkoutStatus.Ready);
+            this.startedOn = ko.observable<Date>();
+            this.finishedOn = ko.observable<Date>();
             this.sets = ko.observableArray<Set>();
+            this.removedSets = [];
 
             if (template) {
                 template.copyTo(this);
@@ -60,7 +62,7 @@
                 this.sets().forEach(set => {
                     set.series().forEach(serie => {
                         numSeries++;
-                        if (serie.uiStatus() === Data.SerieStatus.Finished)
+                        if (serie.status() === Data.SerieStatus.Finished)
                             finishedSeries++;
                     });
                 });
@@ -73,7 +75,7 @@
 
                 this.sets().forEach(set => {
                     set.series().forEach(serie => {
-                        if (serie.uiStatus() === Data.SerieStatus.Finished) {
+                        if (serie.status() === Data.SerieStatus.Finished) {
                             finishedSeries++;
                             difficulty += serie.difficulty();
                         }
@@ -88,7 +90,7 @@
         public addSet(set: Set): void {
             let index = this.sets().length;
             set.parent = this;
-            set.order(index);
+            set.order(index + 1);
             this.sets.push(set);
 
             if (index > 0) {
@@ -98,9 +100,9 @@
         }
 
         public start(): void {
-            this.uiStatus(WorkoutStatus.Running);
-            this.uiStartedOn(new Date());
+            this.status(WorkoutStatus.Running);
 
+            this.startedOn(new Date());
             this.duration(0);
 
             // subscribe duration timer to global timer
@@ -109,7 +111,25 @@
             Program.instance.GlobalTimer.push(this.m_durationTimer);
 
             this.displayedSet = ko.observable<Data.Set>(this.sets()[0])
-            this.displayedSet().start();
+            this.displayedSet().status(SetStatus.Ready);
+        }
+
+        public pause(): void {
+            // unsubscribe the duration timer
+            let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+            if (timerIndex >= 0)
+                Program.instance.GlobalTimer.splice(timerIndex, 1);
+
+            this.status(WorkoutStatus.Paused);
+        }
+
+        public resume(): void {
+            // subscribe duration timer to global timer
+            this.m_durationTimer = new GlobalTimer();
+            this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+            Program.instance.GlobalTimer.push(this.m_durationTimer);            
+
+            this.status(WorkoutStatus.Running);
         }
 
         public stop(): void {
@@ -118,8 +138,8 @@
             if (timerIndex >= 0)
                 Program.instance.GlobalTimer.splice(timerIndex, 1);
 
-            this.uiFinishedOn(new Date());
-            this.uiStatus(WorkoutStatus.Finished);
+            this.finishedOn(new Date());
+            this.status(WorkoutStatus.Finished);
         }
 
         public addNewSet(): void {

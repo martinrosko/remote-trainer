@@ -32,10 +32,11 @@ var RemoteTrainer;
             __extends(Workout, _super);
             function Workout(template) {
                 var _this = _super.call(this) || this;
-                _this.uiStatus = ko.observable(WorkoutStatus.Ready);
-                _this.uiStartedOn = ko.observable();
-                _this.uiFinishedOn = ko.observable();
+                _this.status = ko.observable(WorkoutStatus.Ready);
+                _this.startedOn = ko.observable();
+                _this.finishedOn = ko.observable();
                 _this.sets = ko.observableArray();
+                _this.removedSets = [];
                 if (template) {
                     template.copyTo(_this);
                     template.setTemplates.forEach(function (setTemplate) { return _this.addSet(new Data.Set(setTemplate)); }, _this);
@@ -51,7 +52,7 @@ var RemoteTrainer;
                     _this.sets().forEach(function (set) {
                         set.series().forEach(function (serie) {
                             numSeries++;
-                            if (serie.uiStatus() === Data.SerieStatus.Finished)
+                            if (serie.status() === Data.SerieStatus.Finished)
                                 finishedSeries++;
                         });
                     });
@@ -62,7 +63,7 @@ var RemoteTrainer;
                     var finishedSeries = 0;
                     _this.sets().forEach(function (set) {
                         set.series().forEach(function (serie) {
-                            if (serie.uiStatus() === Data.SerieStatus.Finished) {
+                            if (serie.status() === Data.SerieStatus.Finished) {
                                 finishedSeries++;
                                 difficulty += serie.difficulty();
                             }
@@ -76,7 +77,7 @@ var RemoteTrainer;
             Workout.prototype.addSet = function (set) {
                 var index = this.sets().length;
                 set.parent = this;
-                set.order(index);
+                set.order(index + 1);
                 this.sets.push(set);
                 if (index > 0) {
                     this.sets()[index - 1].next(set);
@@ -84,23 +85,37 @@ var RemoteTrainer;
                 }
             };
             Workout.prototype.start = function () {
-                this.uiStatus(WorkoutStatus.Running);
-                this.uiStartedOn(new Date());
+                this.status(WorkoutStatus.Running);
+                this.startedOn(new Date());
                 this.duration(0);
                 // subscribe duration timer to global timer
                 this.m_durationTimer = new RemoteTrainer.GlobalTimer();
                 this.m_durationTimer.fn = this._onDurationTimer.bind(this);
                 RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
                 this.displayedSet = ko.observable(this.sets()[0]);
-                this.displayedSet().start();
+                this.displayedSet().status(Data.SetStatus.Ready);
+            };
+            Workout.prototype.pause = function () {
+                // unsubscribe the duration timer
+                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
+                if (timerIndex >= 0)
+                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                this.status(WorkoutStatus.Paused);
+            };
+            Workout.prototype.resume = function () {
+                // subscribe duration timer to global timer
+                this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
+                this.status(WorkoutStatus.Running);
             };
             Workout.prototype.stop = function () {
                 // unsubscribe the duration timer
                 var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
                 if (timerIndex >= 0)
                     RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
-                this.uiFinishedOn(new Date());
-                this.uiStatus(WorkoutStatus.Finished);
+                this.finishedOn(new Date());
+                this.status(WorkoutStatus.Finished);
             };
             Workout.prototype.addNewSet = function () {
                 var _this = this;

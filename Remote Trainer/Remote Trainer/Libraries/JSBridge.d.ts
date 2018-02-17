@@ -28,10 +28,11 @@ declare namespace MobileCRM {
     }
 
     interface DynamicEntityStatic {
-        new(entityName: string): DynamicEntityStatic;
+        new(entityName: string, id?: string): DynamicEntityStatic;
         id: string;
         properties: any;
         save(callback: (error: string) => void): void;
+        deleteById(entityName: string, id: string, success: () => void, fail: (error: string) => void, scope?: any): void;
     }
 
     interface ReferenceStatic {
@@ -45,11 +46,13 @@ declare namespace MobileCRM {
 
     interface EntityFormStatic {
         requestObject(success: (result: EntityForm) => void, error: (err: string) => void, scope?: any): void;
+        onSave(handler: (form: EntityForm) => void, bind: boolean, scope?: any): void;
     }
 
     interface EntityForm {
         isDirty: boolean;
         form: Form;
+        suspendSave(): any;
     }
 
     interface FormStatic {
