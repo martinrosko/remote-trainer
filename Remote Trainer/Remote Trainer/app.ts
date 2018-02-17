@@ -59,6 +59,8 @@
                     else {
                         this.m_dataProvider.loadWorkout(workoutId, workout => {
                             this.workout = ko.observable(workout);
+                            if (workout.status() === Data.WorkoutStatus.Running)
+                                workout.status(Data.WorkoutStatus.Paused);
 
                             MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                                 entityForm.form.caption = this.workout().name;
@@ -69,7 +71,6 @@
 
                             MobileCRM.UI.EntityForm.onSave(form => {
                                 var suspendHandler = form.suspendSave();
-
                                 this.m_dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
                             }, true, this);
 

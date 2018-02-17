@@ -83,7 +83,6 @@
             this.uiStatus.subscribe(value => {
                 switch (value) {
                     case SetStatus.Queued:
-                    case SetStatus.Paused:
                     case SetStatus.Finished:
                         this._removeRunningTimer();
                         break;

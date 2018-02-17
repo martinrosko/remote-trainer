@@ -84,10 +84,6 @@ var RemoteTrainer;
                             break;
                         }
                         case SerieStatus.Paused: {
-                            // unsubscribe the duration timer
-                            var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(_this.m_durationTimer);
-                            if (timerIndex >= 0)
-                                RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
                             _this.status(SerieStatus.Ready);
                             break;
                         }

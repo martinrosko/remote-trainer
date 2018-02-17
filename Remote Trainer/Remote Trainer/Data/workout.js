@@ -97,9 +97,7 @@ var RemoteTrainer;
             };
             Workout.prototype.pause = function () {
                 // unsubscribe the duration timer
-                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
-                if (timerIndex >= 0)
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                RemoteTrainer.Program.instance.GlobalTimer.splice(0);
                 this.status(WorkoutStatus.Paused);
             };
             Workout.prototype.resume = function () {

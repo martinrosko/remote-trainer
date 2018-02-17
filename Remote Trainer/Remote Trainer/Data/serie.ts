@@ -117,11 +117,6 @@
                     }
 
                     case SerieStatus.Paused: {
-                        // unsubscribe the duration timer
-                        let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
-                        if (timerIndex >= 0)
-                            Program.instance.GlobalTimer.splice(timerIndex, 1);
-
                         this.status(SerieStatus.Ready);
                         break;
                     }

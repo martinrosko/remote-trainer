@@ -63,7 +63,6 @@ var RemoteTrainer;
                 _this.uiStatus.subscribe(function (value) {
                     switch (value) {
                         case SetStatus.Queued:
-                        case SetStatus.Paused:
                         case SetStatus.Finished:
                             _this._removeRunningTimer();
                             break;

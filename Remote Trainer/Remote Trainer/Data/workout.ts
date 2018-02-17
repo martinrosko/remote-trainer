@@ -116,10 +116,7 @@
 
         public pause(): void {
             // unsubscribe the duration timer
-            let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
-            if (timerIndex >= 0)
-                Program.instance.GlobalTimer.splice(timerIndex, 1);
-
+            Program.instance.GlobalTimer.splice(0);
             this.status(WorkoutStatus.Paused);
         }
 

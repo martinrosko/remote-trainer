@@ -48,6 +48,8 @@ var RemoteTrainer;
                     else {
                         _this.m_dataProvider.loadWorkout(workoutId, function (workout) {
                             _this.workout = ko.observable(workout);
+                            if (workout.status() === RemoteTrainer.Data.WorkoutStatus.Running)
+                                workout.status(RemoteTrainer.Data.WorkoutStatus.Paused);
                             MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                                 entityForm.form.caption = this.workout().name;
                                 entityForm.isDirty = true;
