@@ -22,6 +22,7 @@
         public dialogs: KnockoutObservableArray<Dialog>;
 
         public GlobalTimer: GlobalTimer[] = [];
+        public globalTimerPaused: boolean;
 
         private m_dataProvider: Service.IDataProvider;
 
@@ -30,11 +31,14 @@
             this.uiContentTemplateName = ko.observable<string>("tmplOverview");    
             this.uiFooterTemplateName = ko.observable<string>();
 
+            this.globalTimerPaused = false;
+
             this.dialogs = ko.observableArray<Dialog>();
 
-            window.setInterval(() => {
-                Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
-            }, 1000);
+            window.setInterval((app: Program) => {
+                if (!app.globalTimerPaused)
+                    Program.instance.GlobalTimer.forEach(timer => timer.fn(timer.context));
+            }, 1000, this);
         }
 
         public runApplication(workoutId: string) {
@@ -82,12 +86,16 @@
             }
         }
 
-        public bDisableTabs: boolean = false;
+        public clearTimer(timer: GlobalTimer): boolean {
+            let timerIndex = Program.instance.GlobalTimer.indexOf(timer);
+            if (timerIndex >= 0) {
+                Program.instance.GlobalTimer.splice(timerIndex, 1);
+                return true;
+            }
+            return false;
+        }
 
         public onTabItemClicked(itemName: string): void {
-            if (this.bDisableTabs)
-                return;
-
             switch (itemName) {
                 case "Overview":
                     this.uiContentTemplateName("tmplOverview");

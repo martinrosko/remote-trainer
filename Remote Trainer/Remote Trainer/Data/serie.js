@@ -54,46 +54,65 @@ var RemoteTrainer;
                 }, _this);
                 _this.uiDifficulty = ko.observable(Serie.difficulties[3]);
                 _this.countDownTimer = ko.observable();
-                _this.status = ko.observable(SerieStatus.Queued);
-                _this.uiStatus = ko.computed(function () {
-                    var status = _this.status();
-                    var countDownCounter = _this.countDownTimer();
-                    if ((status === SerieStatus.Ready || status === SerieStatus.Running) && (_this.parent && _this.parent.parent && _this.parent.parent.status() === Data.WorkoutStatus.Paused))
-                        return SerieStatus.Paused;
-                    else if (countDownCounter)
-                        return SerieStatus.Countdown;
-                    return status;
+                _this.countDownTimer.subscribe(function (value) {
+                    if (value) {
+                        _this.uiCountDown(10); // FIXME: take value from db
+                        _this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                        _this.uiOptionsPanelState(OptionPanelState.Opened);
+                    }
+                    else {
+                        _this.uiCountDown(null);
+                        _this.uiOptionsPanelState(OptionPanelState.Closed);
+                    }
+                });
+                _this.uiCountDown = ko.observable();
+                // if countdown reached zero -> start or resume exercise
+                _this.uiCountDown.subscribe(function (value) {
+                    if (value === 0) {
+                        // unsubscribe countdown timer
+                        if (_this.countDownTimer() && RemoteTrainer.Program.instance.clearTimer(_this.countDownTimer()))
+                            _this.countDownTimer(undefined);
+                        // if exercise did not start yet start it. otherwise just resume
+                        if (!_this.uiStartedOn()) {
+                            // stop current break;
+                            RemoteTrainer.Program.instance.clearTimer(_this.m_breakTimer);
+                            // first exercise of the set -> set the sets status to running
+                            if (_this.order() === 1)
+                                _this.parent.status(Data.SetStatus.Running);
+                            _this.uiStartedOn(new Date());
+                        }
+                        _this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                        _this.m_durationTimer.fn = _this._onDurationTimer.bind(_this);
+                        RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_durationTimer);
+                        _this.status(SerieStatus.Running);
+                        _this.uiOptionsPanelState(OptionPanelState.Opened);
+                    }
                 }, _this);
-                _this.uiStatus.subscribe(function (value) {
+                _this.status = ko.observable();
+                _this.status.subscribe(function (value) {
                     switch (value) {
                         case SerieStatus.Ready:
                             RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_breakTimer);
                             break;
                         case SerieStatus.Queued: {
-                            var index = RemoteTrainer.Program.instance.GlobalTimer.indexOf(_this.m_breakTimer);
-                            if (index >= 0)
-                                RemoteTrainer.Program.instance.GlobalTimer.splice(index, 1);
+                            RemoteTrainer.Program.instance.clearTimer(_this.m_breakTimer);
                             _this.break(0);
                             break;
                         }
-                        case SerieStatus.Running: {
-                            if (!_this.m_bDoNotCountDown)
-                                _this._startCountDown();
-                            else
-                                _this.m_bDoNotCountDown = false;
-                            break;
-                        }
-                        case SerieStatus.Paused: {
-                            _this.status(SerieStatus.Ready);
-                            break;
-                        }
+                        case SerieStatus.Paused:
+                            RemoteTrainer.Program.instance.clearTimer(_this.m_durationTimer);
                     }
+                }, _this);
+                _this.uiButtonImage = ko.computed(function () {
+                    var status = _this.status();
+                    if (status === SerieStatus.Running)
+                        return "url(\'Images/serieStatusRunning.png\')";
+                    return "url(\'Images/serieStatusReady.png\')";
                 }, _this);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
                 _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
                 _this.uiOptionsPanelState = ko.observable();
-                _this.uiCountDown = ko.observable();
                 _this.duration = ko.observable(0);
                 _this.uiDuration = ko.computed(function () {
                     var duration = _this.duration();
@@ -114,40 +133,38 @@ var RemoteTrainer;
                 _this.previous = ko.observable();
                 return _this;
             }
+            Serie.prototype.pause = function () {
+                if (this.countDownTimer() && RemoteTrainer.Program.instance.clearTimer(this.countDownTimer()))
+                    this.countDownTimer(undefined);
+                if (this.status() === SerieStatus.Running)
+                    this.status(SerieStatus.Paused);
+            };
             Serie.prototype._onBreakTick = function (context) {
                 this.break(this.break() + 1);
             };
             Serie.prototype.onStatusClicked = function () {
-                var status = this.uiStatus();
+                var status = this.status();
                 switch (status) {
-                    case SerieStatus.Paused:
-                        this.parent.parent.resume();
-                        this._startCountDown();
-                        break;
                     case SerieStatus.Ready:
+                    case SerieStatus.Paused:
+                        this.parent.resume(true);
                         this._startCountDown();
-                        break;
-                    case SerieStatus.Countdown:
-                        this._stopCountDown();
                         break;
                     case SerieStatus.Running: {
                         this.status(SerieStatus.Finished);
                         this.uiOptionsPanelState(OptionPanelState.Closed);
                         this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
-                        this.uiFinishedOn(moment(this.uiStartedOn()).add(this.duration(), "second").toDate());
+                        this.uiFinishedOn(new Date());
                         // unsubscribe the duration timer
-                        var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
-                        if (timerIndex >= 0)
-                            RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
+                        RemoteTrainer.Program.instance.clearTimer(this.m_durationTimer);
                         if (this.next()) {
                             this.next().status(SerieStatus.Ready);
                         }
                         else {
                             // finish set
-                            var set = this.parent;
-                            set.status(Data.SetStatus.Finished);
-                            if (set.next())
-                                set.next().status(Data.SetStatus.Ready);
+                            this.parent.status(Data.SetStatus.Finished);
+                            if (this.parent.next())
+                                this.parent.next().status(Data.SetStatus.Ready);
                         }
                         break;
                     }
@@ -207,9 +224,12 @@ var RemoteTrainer;
                     //}
                 }
             };
-            Serie.prototype.remove = function () {
-                if (confirm("Remove the serie?")) {
+            Serie.prototype.remove = function (bAskConfirm) {
+                if (bAskConfirm === void 0) { bAskConfirm = true; }
+                if (!bAskConfirm || confirm("Remove the serie?")) {
                     this.parent.series.splice(this.order() - 1, 1);
+                    if (this.id && !this.parent.removedSeries.containsKey(this.id))
+                        this.parent.removedSeries.set(this.id, this);
                     if (this.previous())
                         this.previous().next(this.next());
                     if (this.next())
@@ -245,43 +265,18 @@ var RemoteTrainer;
             Serie.prototype._startCountDown = function () {
                 this.uiOptionsPanelState(OptionPanelState.Opened);
                 // if not counting down already -> start countdown
-                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.countDownTimer());
-                if (timerIndex < 0) {
-                    this.uiCountDown(10);
-                    this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                if (!this.countDownTimer()) {
                     this.countDownTimer(new RemoteTrainer.GlobalTimer());
                     this.countDownTimer().fn = this._onCountDownTimer.bind(this);
                     RemoteTrainer.Program.instance.GlobalTimer.push(this.countDownTimer());
                 }
-            };
-            Serie.prototype._stopCountDown = function () {
-                if (this.uiCountDown() > 0)
+                else {
+                    // if already in countdown skip countdown and run immediately
                     this.uiCountDown(0);
-                // unsubscribe countdown timer
-                var timerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.countDownTimer());
-                if (timerIndex >= 0) {
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(timerIndex, 1);
-                    this.countDownTimer(null);
                 }
-                // stop current break;
-                var breakTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_breakTimer);
-                if (breakTimerIndex >= 0)
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(breakTimerIndex, 1);
-                this.m_bDoNotCountDown = true;
-                this.status(SerieStatus.Running);
-                if (this.order() === 1)
-                    this.parent.status(Data.SetStatus.Running);
-                var now = new Date();
-                this.uiStartedOn(now);
-                // subscribe duration timer to global timer
-                this.m_durationTimer = new RemoteTrainer.GlobalTimer();
-                this.m_durationTimer.fn = this._onDurationTimer.bind(this);
-                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
             };
             Serie.prototype._onCountDownTimer = function (context) {
                 this.uiCountDown(this.uiCountDown() - 1);
-                if (this.uiCountDown() == 0)
-                    this._stopCountDown();
             };
             Serie.prototype._onDurationTimer = function (context) {
                 this.duration(this.duration() + 1);
@@ -297,7 +292,6 @@ var RemoteTrainer;
             SerieStatus[SerieStatus["Ready"] = 10000] = "Ready";
             SerieStatus[SerieStatus["Running"] = 10001] = "Running";
             SerieStatus[SerieStatus["Paused"] = 10002] = "Paused";
-            SerieStatus[SerieStatus["Countdown"] = 10003] = "Countdown";
         })(SerieStatus = Data.SerieStatus || (Data.SerieStatus = {}));
         var OptionPanelState;
         (function (OptionPanelState) {

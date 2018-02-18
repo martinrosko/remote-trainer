@@ -240,6 +240,7 @@ var RemoteTrainer;
                 jsbWorkout.properties["actualend"] = workout.finishedOn();
                 jsbWorkout.properties["statuscode"] = workout.status();
                 jsbWorkout.save(function (error) {
+                    var _this = this;
                     if (!error) {
                         var count_1 = workout.sets().length;
                         workout.id = this.id;
@@ -250,8 +251,11 @@ var RemoteTrainer;
                                 callback(error);
                         }); }, this);
                         // FIXME: clear removedSeries after completed
-                        workout.removedSets.forEach(function (setToRemove) {
-                            MobileCRM.DynamicEntity.deleteById("set", setToRemove, function () {
+                        workout.removedSets.getValues().forEach(function (setToRemove) {
+                            MobileCRM.DynamicEntity.deleteById("set", setToRemove.id, function () {
+                                setToRemove.removedSeries.getValues().forEach(function (serieToRemove) {
+                                    MobileCRM.DynamicEntity.deleteById("serie", serieToRemove.id, function () { }, function (e) { });
+                                }, _this);
                                 if (--count_1 === 0)
                                     callback(error);
                             }, function (e) {
@@ -267,7 +271,7 @@ var RemoteTrainer;
             JSBridgeProvider._saveSet = function (set, callback) {
                 var jsbSet = new MobileCRM.DynamicEntity("set", set.id);
                 jsbSet.properties["order"] = set.order();
-                jsbSet.properties["statuscode"] = set.uiStatus();
+                jsbSet.properties["statuscode"] = set.status();
                 jsbSet.properties["workoutid"] = new MobileCRM.Reference("workout", set.parent.id, "");
                 jsbSet.save(function (error) {
                     if (!error) {
@@ -280,7 +284,7 @@ var RemoteTrainer;
                                 callback(error);
                         }); });
                         // FIXME: clear removedSeries after completed
-                        set.removedSeries.forEach(function (serieToRemove) {
+                        set.removedSeries.getKeys().forEach(function (serieToRemove) {
                             MobileCRM.DynamicEntity.deleteById("serie", serieToRemove, function () {
                                 if (--count_2 === 0)
                                     callback(error);

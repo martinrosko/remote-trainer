@@ -293,8 +293,12 @@
 
 
                     // FIXME: clear removedSeries after completed
-                    workout.removedSets.forEach(setToRemove => {
-                        MobileCRM.DynamicEntity.deleteById("set", setToRemove, () => {
+                    workout.removedSets.getValues().forEach(setToRemove => {
+                        MobileCRM.DynamicEntity.deleteById("set", setToRemove.id, () => {
+                            setToRemove.removedSeries.getValues().forEach(serieToRemove => {
+                                MobileCRM.DynamicEntity.deleteById("serie", serieToRemove.id, () => { }, (e) => { });
+                            }, this);
+
                             if (--count === 0)
                                 callback(error);
                         }, (e) => {
@@ -311,7 +315,7 @@
         private static _saveSet(set: Data.Set, callback: (error: string) => void): void {
             let jsbSet = new MobileCRM.DynamicEntity("set", set.id);
             jsbSet.properties["order"] = set.order();
-            jsbSet.properties["statuscode"] = set.uiStatus();
+            jsbSet.properties["statuscode"] = set.status();
             jsbSet.properties["workoutid"] = new MobileCRM.Reference("workout", set.parent.id, "");
 
             jsbSet.save(function (error: string) {
@@ -327,7 +331,7 @@
                     }));
 
                     // FIXME: clear removedSeries after completed
-                    set.removedSeries.forEach(serieToRemove => {
+                    set.removedSeries.getKeys().forEach(serieToRemove => {
                         MobileCRM.DynamicEntity.deleteById("serie", serieToRemove, () => {
                             if (--count === 0)
                                 callback(error);

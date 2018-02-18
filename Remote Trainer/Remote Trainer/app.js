@@ -10,14 +10,15 @@ var RemoteTrainer;
     var Program = (function () {
         function Program() {
             this.GlobalTimer = [];
-            this.bDisableTabs = false;
             this.uiSelectedTabIndex = ko.observable(0);
             this.uiContentTemplateName = ko.observable("tmplOverview");
             this.uiFooterTemplateName = ko.observable();
+            this.globalTimerPaused = false;
             this.dialogs = ko.observableArray();
-            window.setInterval(function () {
-                Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
-            }, 1000);
+            window.setInterval(function (app) {
+                if (!app.globalTimerPaused)
+                    Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
+            }, 1000, this);
         }
         Object.defineProperty(Program, "instance", {
             get: function () {
@@ -66,9 +67,15 @@ var RemoteTrainer;
                 });
             }
         };
+        Program.prototype.clearTimer = function (timer) {
+            var timerIndex = Program.instance.GlobalTimer.indexOf(timer);
+            if (timerIndex >= 0) {
+                Program.instance.GlobalTimer.splice(timerIndex, 1);
+                return true;
+            }
+            return false;
+        };
         Program.prototype.onTabItemClicked = function (itemName) {
-            if (this.bDisableTabs)
-                return;
             switch (itemName) {
                 case "Overview":
                     this.uiContentTemplateName("tmplOverview");

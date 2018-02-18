@@ -39,7 +39,7 @@ var RemoteTrainer;
                 _this.next = ko.observable(null);
                 _this.previous = ko.observable(null);
                 _this.series = ko.observableArray();
-                _this.removedSeries = [];
+                _this.removedSeries = new Resco.Dictionary();
                 _this.exercises = ko.computed(function () {
                     var series = _this.series();
                     var result = [];
@@ -54,22 +54,18 @@ var RemoteTrainer;
                     template.serieTemplates.forEach(function (serieTemplate) { return _this.addSerie(new Data.Serie(serieTemplate)); }, _this);
                 }
                 _this.status = ko.observable(SetStatus.Queued);
-                _this.uiStatus = ko.computed(function () {
-                    var status = _this.status();
-                    if ((status === SetStatus.Ready || status === SetStatus.Running) && (_this.parent && _this.parent.status() === Data.WorkoutStatus.Paused))
-                        return SetStatus.Paused;
-                    return status;
-                }, _this);
-                _this.uiStatus.subscribe(function (value) {
+                _this.status.subscribe(function (value) {
                     switch (value) {
                         case SetStatus.Queued:
                         case SetStatus.Finished:
-                            _this._removeRunningTimer();
+                            RemoteTrainer.Program.instance.clearTimer(_this.m_runningTimer);
                             break;
                         case SetStatus.Running:
-                            _this.m_runningTimer = new RemoteTrainer.GlobalTimer();
-                            _this.m_runningTimer.fn = _this._onRunningTick.bind(_this);
-                            RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_runningTimer);
+                            if (!_this.m_runningTimer) {
+                                _this.m_runningTimer = new RemoteTrainer.GlobalTimer();
+                                _this.m_runningTimer.fn = _this._onRunningTick.bind(_this);
+                                RemoteTrainer.Program.instance.GlobalTimer.push(_this.m_runningTimer);
+                            }
                             break;
                         case SetStatus.Ready:
                             if (_this.series().length > 0)
@@ -78,7 +74,7 @@ var RemoteTrainer;
                     }
                 }, _this);
                 _this.uiAverageDifficulty = ko.computed(function () {
-                    if (_this.uiStatus() === SetStatus.Finished && _this.series().length > 0) {
+                    if (_this.status() === SetStatus.Finished && _this.series().length > 0) {
                         var total = 0;
                         _this.series().forEach(function (s) { return total += s.difficulty(); });
                         return (total / _this.series().length).toFixed(2);
@@ -103,10 +99,17 @@ var RemoteTrainer;
                 _this.uiOptionsPanelState = ko.observable(Data.OptionPanelState.Closed);
                 return _this;
             }
-            Set.prototype._removeRunningTimer = function () {
-                var runningTimerIndex = RemoteTrainer.Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
-                if (runningTimerIndex >= 0)
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
+            Set.prototype.pause = function () {
+                var activeSerie = this.series().firstOrDefault(function (serie) { return serie.status() === Data.SerieStatus.Running || serie.status() === Data.SerieStatus.Ready; });
+                if (activeSerie)
+                    activeSerie.pause();
+                if (this.status() === SetStatus.Running)
+                    this.status(SetStatus.Paused);
+            };
+            Set.prototype.resume = function (bIgnorePaused) {
+                if (this.status() === SetStatus.Paused && (bIgnorePaused || !this.series().firstOrDefault(function (serie) { return serie.status() === Data.SerieStatus.Paused; })))
+                    this.status(SetStatus.Running);
+                this.parent.resume();
             };
             Set.prototype.addSerie = function (serie) {
                 var index = this.series().length;
@@ -122,12 +125,6 @@ var RemoteTrainer;
             };
             Set.prototype._onRunningTick = function (context) {
                 this.duration(this.duration() + 1);
-            };
-            Set.prototype.resume = function () {
-                this.m_runningTimer = new RemoteTrainer.GlobalTimer();
-                this.m_runningTimer.context = Math.round(Date.now() / 1000);
-                this.m_runningTimer.fn = this._onRunningTick.bind(this);
-                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_runningTimer);
             };
             Set.prototype.show = function () {
                 this.parent.displayedSet(this);
@@ -174,7 +171,7 @@ var RemoteTrainer;
                 }
             };
             Set.prototype.moveUp = function () {
-                if (this.previous() && (this.previous().uiStatus() === SetStatus.Queued || this.previous().uiStatus() === SetStatus.Ready)) {
+                if (this.previous() && (this.previous().status() === SetStatus.Queued || this.previous().status() === SetStatus.Ready)) {
                     var sets = this.parent.sets();
                     sets.splice(this.order() - 1, 1);
                     sets.splice(this.order() - 2, 0, this);
@@ -197,11 +194,13 @@ var RemoteTrainer;
                     //}
                 }
             };
-            Set.prototype.remove = function () {
-                if (confirm("Remove the entire set?")) {
+            Set.prototype.remove = function (askConfirm) {
+                if (askConfirm === void 0) { askConfirm = true; }
+                if (!askConfirm || confirm("Remove the entire set?")) {
                     this.parent.sets.splice(this.order() - 1, 1);
-                    if (this.parent.removedSets.indexOf(this.id) < 0)
-                        this.parent.removedSets.push(this.id);
+                    if (this.id && !this.parent.removedSets.containsKey(this.id))
+                        this.parent.removedSets.set(this.id, this);
+                    this.series().forEach(function (serie) { return serie.remove(false); }, this);
                     if (this.previous())
                         this.previous().next(this.next());
                     if (this.next())
@@ -234,8 +233,8 @@ var RemoteTrainer;
                         var series = set.series();
                         series.forEach(function (oldSerie) {
                             // if there is not a serie with old id in new set of series, add it to deleted series, it must be removed from
-                            if (!clonedSet.series().firstOrDefault(function (clonedSerie) { return clonedSerie.id === oldSerie.id; }) && set.removedSeries.indexOf(oldSerie.id) < 0)
-                                set.removedSeries.push(oldSerie.id);
+                            if (!clonedSet.series().firstOrDefault(function (clonedSerie) { return clonedSerie.id === oldSerie.id; }) && oldSerie.id && !set.removedSeries.containsKey(oldSerie.id))
+                                set.removedSeries.set(oldSerie.id, oldSerie);
                         }, _this);
                         clonedSet.copyTo(set);
                     }

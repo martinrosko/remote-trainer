@@ -23,7 +23,7 @@
 
     export class Workout extends WorkoutTemplate {
         public sets: KnockoutObservableArray<Set>;
-        public removedSets: string[]; // just ids
+        public removedSets: Resco.Dictionary<string, Set>;
         public status: KnockoutObservable<WorkoutStatus>;
         public startedOn: KnockoutObservable<Date>;
         public finishedOn: KnockoutObservable<Date>;
@@ -41,7 +41,7 @@
             this.startedOn = ko.observable<Date>();
             this.finishedOn = ko.observable<Date>();
             this.sets = ko.observableArray<Set>();
-            this.removedSets = [];
+            this.removedSets = new Resco.Dictionary<string, Set>();
 
             if (template) {
                 template.copyTo(this);
@@ -115,28 +115,55 @@
         }
 
         public pause(): void {
-            // unsubscribe the duration timer
-            Program.instance.GlobalTimer.splice(0);
-            this.status(WorkoutStatus.Paused);
+            if (this.status() === WorkoutStatus.Running) {
+                // pause global timers
+                Program.instance.globalTimerPaused = true;
+                this.status(WorkoutStatus.Paused);
+                let activeSet = this.sets().firstOrDefault(set => set.status() === SetStatus.Running || set.status() === SetStatus.Ready);
+                if (activeSet)
+                    activeSet.pause();
+            }
         }
 
         public resume(): void {
-            // subscribe duration timer to global timer
-            this.m_durationTimer = new GlobalTimer();
-            this.m_durationTimer.fn = this._onDurationTimer.bind(this);
-            Program.instance.GlobalTimer.push(this.m_durationTimer);            
+            if (this.status() === WorkoutStatus.Paused) {
+                // resume global timers
+                Program.instance.globalTimerPaused = false;
+                this.status(WorkoutStatus.Running);
+                // serie is restarted explicitly by user (it has countdown timer...)
 
-            this.status(WorkoutStatus.Running);
+                let pausedSet = this.sets().firstOrDefault(set => set.status() === SetStatus.Paused);
+                if (pausedSet)
+                    pausedSet.resume(false);
+            }
         }
 
         public stop(): void {
-            // unsubscribe the duration timer
-            let timerIndex = Program.instance.GlobalTimer.indexOf(this.m_durationTimer);
-            if (timerIndex >= 0)
-                Program.instance.GlobalTimer.splice(timerIndex, 1);
+            let unfinishedSet = this.sets().firstOrDefault(set => set.status() !== SetStatus.Finished);
+            if (!unfinishedSet || confirm("Do you want to complete the workout? All unfinished sets will be removed")) {
+                // clear all timers
+                Program.instance.GlobalTimer.splice(0);
+                this.finishedOn(new Date());
+                this.status(WorkoutStatus.Finished);
 
-            this.finishedOn(new Date());
-            this.status(WorkoutStatus.Finished);
+                let sets = this.sets();
+                for (let i = sets.length - 1; i >= 0; i--) {
+                    let set = sets[i];
+                    if (set.status() === SetStatus.Queued || set.status() === SetStatus.Ready) {
+                        set.remove(false);
+                    }
+                    else if (set.status() !== SetStatus.Finished) {
+                        // remove unfinished series of incomplete sets
+                        let series = set.series();
+                        for (let j = series.length - 1; j >= 0; j--) {
+                            let serie = series[j];
+                            if (serie.status() !== SerieStatus.Finished)
+                                serie.remove(false);
+                        }
+                        set.status(SetStatus.Finished);
+                    }
+                }
+            }
         }
 
         public addNewSet(): void {

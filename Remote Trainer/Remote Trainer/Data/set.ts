@@ -28,14 +28,13 @@
 
     export class Set extends SetTemplate {
         public status: KnockoutObservable<SetStatus>;
-        public uiStatus: KnockoutComputed<SetStatus>;
         public uiAverageDifficulty: KnockoutComputed<string>;
         public duration: KnockoutObservable<number>; 
         public uiDurationLabel: KnockoutComputed<string>;
         public exercising: KnockoutComputed<number>;
         public uiExercisingLabel: KnockoutComputed<string>;
         public series: KnockoutObservableArray<Serie>;
-        public removedSeries: string[]; // just ids
+        public removedSeries: Resco.Dictionary<string, Serie>;
         public exercises: KnockoutComputed<Exercise[]>;
         public parent: Workout;
         public next: KnockoutObservable<Set>;
@@ -50,7 +49,7 @@
             this.previous = ko.observable<Set>(null);
 
             this.series = ko.observableArray<Serie>();
-            this.removedSeries = [];
+            this.removedSeries = new Resco.Dictionary<string, Serie>();
 
             this.exercises = ko.computed(() => {
                 let series = this.series();
@@ -70,27 +69,19 @@
             }
 
             this.status = ko.observable<SetStatus>(SetStatus.Queued);
-
-            this.uiStatus = ko.computed(() => {
-                let status = this.status();
-
-                if ((status === SetStatus.Ready || status === SetStatus.Running) && (this.parent && this.parent.status() === WorkoutStatus.Paused))
-                    return SetStatus.Paused;
-
-                return status;
-            }, this);
-
-            this.uiStatus.subscribe(value => {
+            this.status.subscribe(value => {
                 switch (value) {
                     case SetStatus.Queued:
                     case SetStatus.Finished:
-                        this._removeRunningTimer();
+                        Program.instance.clearTimer(this.m_runningTimer);
                         break;
 
                     case SetStatus.Running:
-                        this.m_runningTimer = new GlobalTimer();
-                        this.m_runningTimer.fn = this._onRunningTick.bind(this);
-                        Program.instance.GlobalTimer.push(this.m_runningTimer);
+                        if (!this.m_runningTimer) {
+                            this.m_runningTimer = new GlobalTimer();
+                            this.m_runningTimer.fn = this._onRunningTick.bind(this);
+                            Program.instance.GlobalTimer.push(this.m_runningTimer);
+                        }
                         break;
 
                     case SetStatus.Ready:
@@ -101,7 +92,7 @@
             }, this);
 
             this.uiAverageDifficulty = ko.computed(() => {
-                if (this.uiStatus() === SetStatus.Finished && this.series().length > 0) {
+                if (this.status() === SetStatus.Finished && this.series().length > 0) {
                     var total = 0;
                     this.series().forEach(s => total += s.difficulty());
                     return (total / this.series().length).toFixed(2);
@@ -131,10 +122,20 @@
             this.uiOptionsPanelState = ko.observable<OptionPanelState>(OptionPanelState.Closed);
         }
 
-        private _removeRunningTimer(): void {
-            let runningTimerIndex = Program.instance.GlobalTimer.indexOf(this.m_runningTimer);
-            if (runningTimerIndex >= 0)
-                Program.instance.GlobalTimer.splice(runningTimerIndex, 1);
+        public pause(): void {
+            let activeSerie = this.series().firstOrDefault(serie => serie.status() === SerieStatus.Running || serie.status() === SerieStatus.Ready);
+            if (activeSerie)
+                activeSerie.pause();
+
+            if (this.status() === SetStatus.Running)
+                this.status(SetStatus.Paused);
+        }
+
+        public resume(bIgnorePaused: boolean): void {
+            if (this.status() === SetStatus.Paused && (bIgnorePaused || !this.series().firstOrDefault(serie => serie.status() === SerieStatus.Paused)))
+                this.status(SetStatus.Running);
+
+            this.parent.resume();
         }
 
         public addSerie(serie: Serie): void {
@@ -154,13 +155,6 @@
 
         private _onRunningTick(context: any): void {
             this.duration(this.duration() + 1);
-        }
-
-        public resume(): void {
-            this.m_runningTimer = new GlobalTimer();
-            this.m_runningTimer.context = Math.round(Date.now() / 1000);
-            this.m_runningTimer.fn = this._onRunningTick.bind(this);
-            Program.instance.GlobalTimer.push(this.m_runningTimer);
         }
 
         public show(): void {
@@ -218,7 +212,7 @@
         }
 
         public moveUp(): void {
-            if (this.previous() && (this.previous().uiStatus() === SetStatus.Queued || this.previous().uiStatus() === SetStatus.Ready)) {
+            if (this.previous() && (this.previous().status() === SetStatus.Queued || this.previous().status() === SetStatus.Ready)) {
                 let sets = this.parent.sets();
                 sets.splice(this.order() - 1, 1);
                 sets.splice(this.order() - 2, 0, this);
@@ -246,11 +240,13 @@
             }
         }
 
-        public remove(): void {
-            if (confirm("Remove the entire set?")) {
+        public remove(askConfirm: boolean = true): void {
+            if (!askConfirm || confirm("Remove the entire set?")) {
                 this.parent.sets.splice(this.order() - 1, 1);
-                if (this.parent.removedSets.indexOf(this.id) < 0)
-                    this.parent.removedSets.push(this.id);
+                if (this.id && !this.parent.removedSets.containsKey(this.id))
+                    this.parent.removedSets.set(this.id, this);
+
+                this.series().forEach(serie => serie.remove(false), this);
 
                 if (this.previous())
                     this.previous().next(this.next());
@@ -288,8 +284,8 @@
 
                     series.forEach(oldSerie => {
                         // if there is not a serie with old id in new set of series, add it to deleted series, it must be removed from
-                        if (!clonedSet.series().firstOrDefault(clonedSerie => clonedSerie.id === oldSerie.id) && set.removedSeries.indexOf(oldSerie.id) < 0)
-                            set.removedSeries.push(oldSerie.id);
+                        if (!clonedSet.series().firstOrDefault(clonedSerie => clonedSerie.id === oldSerie.id) && oldSerie.id && !set.removedSeries.containsKey(oldSerie.id))
+                            set.removedSeries.set(oldSerie.id, oldSerie);
                     }, this);
 
                     clonedSet.copyTo(set);
