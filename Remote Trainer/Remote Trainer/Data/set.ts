@@ -72,8 +72,14 @@
             this.status.subscribe(value => {
                 switch (value) {
                     case SetStatus.Queued:
+                        Program.instance.clearTimer(this.m_runningTimer);
+                        if (this.series().length > 0)
+                            this.series()[0].status(SerieStatus.Queued);
+                        break;
+
                     case SetStatus.Finished:
                         Program.instance.clearTimer(this.m_runningTimer);
+                        this.uiOptionsPanelState(OptionPanelState.Closed);
                         break;
 
                     case SetStatus.Running:
@@ -123,12 +129,12 @@
         }
 
         public pause(): void {
-            let activeSerie = this.series().firstOrDefault(serie => serie.status() === SerieStatus.Running || serie.status() === SerieStatus.Ready);
-            if (activeSerie)
+            let activeSerie = this.series().firstOrDefault(serie => serie.status() === SerieStatus.Running);
+            if (activeSerie) {
                 activeSerie.pause();
-
-            if (this.status() === SetStatus.Running)
-                this.status(SetStatus.Paused);
+                if (this.status() === SetStatus.Running)
+                    this.status(SetStatus.Paused);
+            }
         }
 
         public resume(bIgnorePaused: boolean): void {
@@ -204,10 +210,15 @@
 
                 this.parent.sets.valueHasMutated();
 
-                //if (this.uiStatus() === SetStatus.Ready) {
-                //    this.previous().ready(this.series()[0].break());    // set the actual lenght of current break to new set that is ready
-                //    this.queue();
-                //}
+                if (this.status() === SetStatus.Ready) {
+                    let currentBreak = this.series().length > 0 ? this.series()[0].break() : 0;
+
+                    this.status(SetStatus.Queued);
+                    if (this.previous().series().length > 0 && currentBreak > 0) {
+                        this.previous().status(SetStatus.Ready);
+                        this.previous().series()[0].break(currentBreak);
+                    }
+                }
             }
         }
 
@@ -233,31 +244,52 @@
 
                 this.parent.sets.valueHasMutated();
 
-                //if (this.next().uiStatus() === SetStatus.Ready) {
-                //    this.ready(this.next().series()[0].break());
-                //    this.next().queue();
-                //}
+                if (this.next().status() === SetStatus.Ready) {
+                    let currentBreak = this.next().series().length > 0 ? this.next().series()[0].break() : 0;
+
+                    this.next().status(SetStatus.Queued);
+                    if (this.series().length > 0 && currentBreak > 0) {
+                        this.status(SetStatus.Ready);
+                        this.series()[0].break(currentBreak);
+                    }
+                }
             }
         }
 
-        public remove(askConfirm: boolean = true): void {
-            if (!askConfirm || confirm("Remove the entire set?")) {
-                this.parent.sets.splice(this.order() - 1, 1);
-                if (this.id && !this.parent.removedSets.containsKey(this.id))
-                    this.parent.removedSets.set(this.id, this);
+        public remove(bAskConfirm: boolean = true): void {
+            if (bAskConfirm) {
+                let confirm = new MessageBox("Do you want to remove the entire set?", ["Yes"], "No");
+                confirm.closed.add(this, (sender, e) => this._removeSet());
+                confirm.show();
+            }
+            else {
+                this._removeSet();
+            }
+        }
 
-                this.series().forEach(serie => serie.remove(false), this);
+        private _removeSet(): void {
+            this.parent.sets.splice(this.order() - 1, 1);
+            if (this.id && !this.parent.removedSets.containsKey(this.id))
+                this.parent.removedSets.set(this.id, this);
 
-                if (this.previous())
-                    this.previous().next(this.next());
-                if (this.next())
-                    this.next().previous(this.previous());
+            this.series().forEach(serie => serie.remove(false), this);
 
-                let next = this.next();
-                while (next) {
-                    next.order(next.order() - 1);
-                    next = next.next();
+            if (this.previous())
+                this.previous().next(this.next());
+
+            let next = this.next();
+            if (next) {
+                next.previous(this.previous());
+
+                if (this.status() === SetStatus.Ready) {
+                    next.status(SetStatus.Ready);
+                    this.parent.displayedSet(next);
                 }
+            }
+
+            while (next) {
+                next.order(next.order() - 1);
+                next = next.next();
             }
         }
 
@@ -265,6 +297,8 @@
             super.copyTo(dst);
             dst.duration(this.duration());
             dst.series([]);
+            dst.next(this.next());
+            dst.previous(this.previous());
             this.series().forEach(serie => dst.addSerie(serie.clone()));
         }
 
@@ -276,8 +310,17 @@
 
         public modifySet(set: Set): void {
             //todo: clone set and modify it only if dialogresult = true
+            set.pause();
             let clonedSet = set.clone();
             let dialog = new ModifySetDialog(clonedSet);
+            dialog.closing.add(this, (sender, e) => {
+                if (clonedSet.series().length === 0) {
+                    let alert = new MessageBox("Set cannot be empty");
+                    alert.show();
+                    e.cancel = true;
+                }
+            });
+
             dialog.closed.add(this, (sender, e) => {
                 if (dialog.dialogResult) {
                     let series = set.series();
@@ -289,6 +332,23 @@
                     }, this);
 
                     clonedSet.copyTo(set);
+                    series = set.series();
+                    set.uiOptionsPanelState(OptionPanelState.Closed);
+                    // if we removed all active series. then complete this st and ready the next one
+                    if (set.series()[set.series().length - 1].status() === SerieStatus.Finished) {
+                        set.status(SetStatus.Finished);
+                        if (set.next())
+                            set.next().status(SetStatus.Ready);
+                    }
+
+                    // if this is running set and we removed serie that was ready, make ready first queued serie
+                    if (set.status() !== SetStatus.Finished && set.status() !== SetStatus.Queued && !series.some(s => s.status() === SerieStatus.Ready)) {
+                        for (let i = 0; i < series.length; i++) {
+                            if (series[i].status() === SerieStatus.Queued)
+                                series[i].status(SerieStatus.Ready);
+                        }
+                    }
+
                 }
             });
             Program.instance.showDialog(dialog);

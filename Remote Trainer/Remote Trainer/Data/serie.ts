@@ -54,6 +54,7 @@
         public next: KnockoutObservable<Serie>;
         public previous: KnockoutObservable<Serie>;
         public countDownTimer: KnockoutObservable<GlobalTimer>;
+        public canMoveUp: KnockoutComputed<boolean>;
 
         static difficulties: string[] = ["Very Easy", "Easy", "Medium", "Hard", "Very Hard"];
 
@@ -121,7 +122,7 @@
                 }
             }, this);
 
-            this.status = ko.observable<SerieStatus>();
+            this.status = ko.observable<SerieStatus>(SerieStatus.Queued);
             this.status.subscribe(value => {
                 switch (value) {
                     case SerieStatus.Ready:
@@ -144,6 +145,8 @@
 
                 if (status === SerieStatus.Running)
                     return "url(\'Images/serieStatusRunning.png\')";
+                else if (status === SerieStatus.Finished)
+                    return "url(\'Images/serieStatusFinished.png\')";
                 
                 return "url(\'Images/serieStatusReady.png\')";
             }, this);
@@ -177,6 +180,11 @@
 
             this.next = ko.observable<Serie>();
             this.previous = ko.observable<Serie>();
+
+            this.canMoveUp = ko.computed(() => {
+                let previous = this.previous();
+                return (previous && (previous.status() === SerieStatus.Queued || previous.status() === SerieStatus.Ready));
+            });
         }
 
         public pause(): void {
@@ -224,6 +232,7 @@
                 }
 
                 case SerieStatus.Finished:
+                    this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                     this._toggleOptionsPanel();
                     break;
             }
@@ -258,11 +267,18 @@
                     previousSet.next(this.previous());
 
                 this.parent.series.valueHasMutated();
+
+                if (this.status() === SerieStatus.Ready) {
+                    let currentBreak = this.break();
+                    this.status(SerieStatus.Queued);
+                    this.previous().status(SerieStatus.Ready);
+                    this.previous().break(currentBreak);
+                }
             }
         }
 
         public moveUp(): void {
-            if (this.previous()) {
+            if (this.canMoveUp()) {
                 let series = this.parent.series();
                 series.splice(this.order() - 1, 1);
                 series.splice(this.order() - 2, 0, this);
@@ -283,41 +299,67 @@
 
                 this.parent.series.valueHasMutated();
 
-                //if (this.next().uiStatus() === SerieStatus.Ready) {
-                //    // FIXME: create postpone method that  handles breaks and uiStatus in separate method
-                //    this.next().series()[0].uiStatus(SerieStatus.Queued);
-                //    this.start();
-                //}
-            }
-        }
-
-        public remove(bAskConfirm: boolean = true): void {
-            if (!bAskConfirm || confirm("Remove the serie?")) {
-                this.parent.series.splice(this.order() - 1, 1);
-                if (this.id && !this.parent.removedSeries.containsKey(this.id))
-                    this.parent.removedSeries.set(this.id, this);
-
-                if (this.previous())
-                    this.previous().next(this.next());
-                if (this.next())
-                    this.next().previous(this.previous());
-
-                let next = this.next();
-                while (next) {
-                    next.order(next.order() - 1);
-                    next = next.next();
+                if (this.next().status() === SerieStatus.Ready) {
+                    let currentBreak = this.next().break();
+                    this.next().status(SerieStatus.Queued);
+                    this.status(SerieStatus.Ready);
+                    this.break(currentBreak);
                 }
             }
         }
 
-        public copyTo(dst: Serie): void {
+        public remove(bAskConfirm: boolean = true): void {
+            if (bAskConfirm) {
+                let confirm = new MessageBox("Do you want to remove only this serie or whole exercise?", ["Just the Serie", "Whole Exercise"], "Cancel");
+                confirm.closed.add(this, (sender, e) => {
+                    if (e.button === 0) {
+                        this._removeSerie();
+                    }
+                    else if (e.button === 1) {
+                        let exercise = this.exercise;
+                        let series = this.parent.series();
+
+                        for (let i = series.length - 1; i >= 0; i--) {
+                            if (series[i].exercise === exercise && (series[i].status() === SerieStatus.Ready || series[i].status() === SerieStatus.Queued))
+                                series[i].remove(false);
+                        }
+                    }
+                });
+                confirm.show();
+            }
+            else {
+                this._removeSerie();
+            }
+        }
+
+        private _removeSerie(): void {
+            this.parent.series.splice(this.order() - 1, 1);
+            if (this.id && !this.parent.removedSeries.containsKey(this.id))
+                this.parent.removedSeries.set(this.id, this);
+
+            if (this.previous())
+                this.previous().next(this.next());
+            if (this.next())
+                this.next().previous(this.previous());
+
+            let next = this.next();
+            while (next) {
+                next.order(next.order() - 1);
+                next = next.next();
+            }
+        }
+
+        public copyTo(dst: SerieTemplate, bAsTemplate: boolean = false): void {
             super.copyTo(dst);
-            dst.uiAmount(this.uiAmount());
-            dst.uiReps(this.uiReps());
-            dst.uiStartedOn(this.uiStartedOn());
-            dst.uiFinishedOn(this.uiFinishedOn());
-            dst.duration(this.duration());
-            dst.status(this.status());
+            if (dst instanceof Serie) {
+                dst.uiAmount(this.uiAmount());
+                dst.uiReps(this.uiReps());
+                dst.uiStartedOn(this.uiStartedOn());
+                dst.uiFinishedOn(this.uiFinishedOn());
+                dst.duration(this.duration());
+                dst.status(this.status());
+                dst.break(this.break());
+            }
         }
 
         public clone(): Serie {
@@ -327,8 +369,9 @@
         }
 
         public addClone(): void {
-            // FIXME: clone self, not template
-            this.parent.addSerie(new Serie(this.clone()));
+            var cloneTemplate = new SerieTemplate();
+            this.copyTo(cloneTemplate);
+            this.parent.addSerie(new Serie(cloneTemplate));
         }
 
         private _toggleOptionsPanel(): void {

@@ -93,7 +93,8 @@ var RemoteTrainer;
                 this.m_durationTimer.fn = this._onDurationTimer.bind(this);
                 RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
                 this.displayedSet = ko.observable(this.sets()[0]);
-                this.displayedSet().status(Data.SetStatus.Ready);
+                if (this.displayedSet())
+                    this.displayedSet().status(Data.SetStatus.Ready);
             };
             Workout.prototype.pause = function () {
                 if (this.status() === WorkoutStatus.Running) {
@@ -110,35 +111,49 @@ var RemoteTrainer;
                     // resume global timers
                     RemoteTrainer.Program.instance.globalTimerPaused = false;
                     this.status(WorkoutStatus.Running);
-                    // serie is restarted explicitly by user (it has countdown timer...)
+                    // serie is restarted explicitly by user (it has its own countdown timer...)
+                    // if workout was loaded in paused state, this timer was not created yet
+                    if (!this.m_durationTimer) {
+                        this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                        this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                        RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
+                    }
                     var pausedSet = this.sets().firstOrDefault(function (set) { return set.status() === Data.SetStatus.Paused; });
                     if (pausedSet)
                         pausedSet.resume(false);
                 }
             };
             Workout.prototype.stop = function () {
+                var _this = this;
                 var unfinishedSet = this.sets().firstOrDefault(function (set) { return set.status() !== Data.SetStatus.Finished; });
-                if (!unfinishedSet || confirm("Do you want to complete the workout? All unfinished sets will be removed")) {
-                    // clear all timers
-                    RemoteTrainer.Program.instance.GlobalTimer.splice(0);
-                    this.finishedOn(new Date());
-                    this.status(WorkoutStatus.Finished);
-                    var sets = this.sets();
-                    for (var i = sets.length - 1; i >= 0; i--) {
-                        var set = sets[i];
-                        if (set.status() === Data.SetStatus.Queued || set.status() === Data.SetStatus.Ready) {
-                            set.remove(false);
+                if (unfinishedSet) {
+                    var confirm_1 = new RemoteTrainer.MessageBox("Do you want to complete the workout? All unfinished sets will be removed.", ["Complete"], "Cancel");
+                    confirm_1.closed.add(this, function (sender, e) { return _this._completeWorkout(); });
+                    confirm_1.show();
+                }
+                else {
+                    this._completeWorkout();
+                }
+            };
+            Workout.prototype._completeWorkout = function () {
+                RemoteTrainer.Program.instance.GlobalTimer.splice(0);
+                this.finishedOn(new Date());
+                this.status(WorkoutStatus.Finished);
+                var sets = this.sets();
+                for (var i = sets.length - 1; i >= 0; i--) {
+                    var set = sets[i];
+                    if (set.status() === Data.SetStatus.Queued || set.status() === Data.SetStatus.Ready) {
+                        set.remove(false);
+                    }
+                    else if (set.status() !== Data.SetStatus.Finished) {
+                        // remove unfinished series of incomplete sets
+                        var series = set.series();
+                        for (var j = series.length - 1; j >= 0; j--) {
+                            var serie = series[j];
+                            if (serie.status() !== Data.SerieStatus.Finished)
+                                serie.remove(false);
                         }
-                        else if (set.status() !== Data.SetStatus.Finished) {
-                            // remove unfinished series of incomplete sets
-                            var series = set.series();
-                            for (var j = series.length - 1; j >= 0; j--) {
-                                var serie = series[j];
-                                if (serie.status() !== Data.SerieStatus.Finished)
-                                    serie.remove(false);
-                            }
-                            set.status(Data.SetStatus.Finished);
-                        }
+                        set.status(Data.SetStatus.Finished);
                     }
                 }
             };
@@ -146,10 +161,18 @@ var RemoteTrainer;
                 var _this = this;
                 var set = new Data.Set();
                 var dialog = new Data.ModifySetDialog(set);
+                dialog.closing.add(this, function (sender, e) {
+                    if (set.series().length === 0) {
+                        var alert_1 = new RemoteTrainer.MessageBox("Set cannot be empty");
+                        alert_1.show();
+                        e.cancel = true;
+                    }
+                });
                 dialog.closed.add(this, function (sender, e) {
                     if (dialog.dialogResult) {
-                        if (set.series().length > 0)
-                            _this.addSet(set);
+                        _this.addSet(set);
+                        if ((_this.status() === WorkoutStatus.Running || _this.status() === WorkoutStatus.Paused) && (!set.previous() || set.previous().status() === Data.SetStatus.Finished))
+                            set.status(Data.SetStatus.Ready);
                     }
                 });
                 RemoteTrainer.Program.instance.showDialog(dialog);

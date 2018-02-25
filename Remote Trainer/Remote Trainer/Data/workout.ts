@@ -111,7 +111,8 @@
             Program.instance.GlobalTimer.push(this.m_durationTimer);
 
             this.displayedSet = ko.observable<Data.Set>(this.sets()[0])
-            this.displayedSet().status(SetStatus.Ready);
+            if (this.displayedSet())
+                this.displayedSet().status(SetStatus.Ready);
         }
 
         public pause(): void {
@@ -130,7 +131,14 @@
                 // resume global timers
                 Program.instance.globalTimerPaused = false;
                 this.status(WorkoutStatus.Running);
-                // serie is restarted explicitly by user (it has countdown timer...)
+                // serie is restarted explicitly by user (it has its own countdown timer...)
+
+                // if workout was loaded in paused state, this timer was not created yet
+                if (!this.m_durationTimer) {
+                    this.m_durationTimer = new GlobalTimer();
+                    this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                    Program.instance.GlobalTimer.push(this.m_durationTimer);
+                }
 
                 let pausedSet = this.sets().firstOrDefault(set => set.status() === SetStatus.Paused);
                 if (pausedSet)
@@ -140,28 +148,36 @@
 
         public stop(): void {
             let unfinishedSet = this.sets().firstOrDefault(set => set.status() !== SetStatus.Finished);
-            if (!unfinishedSet || confirm("Do you want to complete the workout? All unfinished sets will be removed")) {
-                // clear all timers
-                Program.instance.GlobalTimer.splice(0);
-                this.finishedOn(new Date());
-                this.status(WorkoutStatus.Finished);
+            if (unfinishedSet) {
+                let confirm = new MessageBox("Do you want to complete the workout? All unfinished sets will be removed.", ["Complete"], "Cancel");
+                confirm.closed.add(this, (sender, e) => this._completeWorkout());
+                confirm.show();
+            }
+            else {
+                this._completeWorkout();
+            }
+        }
 
-                let sets = this.sets();
-                for (let i = sets.length - 1; i >= 0; i--) {
-                    let set = sets[i];
-                    if (set.status() === SetStatus.Queued || set.status() === SetStatus.Ready) {
-                        set.remove(false);
+        private _completeWorkout(): void {
+            Program.instance.GlobalTimer.splice(0);
+            this.finishedOn(new Date());
+            this.status(WorkoutStatus.Finished);
+
+            let sets = this.sets();
+            for (let i = sets.length - 1; i >= 0; i--) {
+                let set = sets[i];
+                if (set.status() === SetStatus.Queued || set.status() === SetStatus.Ready) {
+                    set.remove(false);
+                }
+                else if (set.status() !== SetStatus.Finished) {
+                    // remove unfinished series of incomplete sets
+                    let series = set.series();
+                    for (let j = series.length - 1; j >= 0; j--) {
+                        let serie = series[j];
+                        if (serie.status() !== SerieStatus.Finished)
+                            serie.remove(false);
                     }
-                    else if (set.status() !== SetStatus.Finished) {
-                        // remove unfinished series of incomplete sets
-                        let series = set.series();
-                        for (let j = series.length - 1; j >= 0; j--) {
-                            let serie = series[j];
-                            if (serie.status() !== SerieStatus.Finished)
-                                serie.remove(false);
-                        }
-                        set.status(SetStatus.Finished);
-                    }
+                    set.status(SetStatus.Finished);
                 }
             }
         }
@@ -169,10 +185,19 @@
         public addNewSet(): void {
             let set = new Set();
             let dialog = new ModifySetDialog(set);
+            dialog.closing.add(this, (sender, e) => {
+                if (set.series().length === 0) {
+                    let alert = new MessageBox("Set cannot be empty");
+                    alert.show();
+                    e.cancel = true;
+                }
+            });
+
             dialog.closed.add(this, (sender, e) => {
                 if (dialog.dialogResult) {
-                    if (set.series().length > 0)
-                        this.addSet(set);
+                    this.addSet(set);
+                    if ((this.status() === WorkoutStatus.Running || this.status() === WorkoutStatus.Paused) && (!set.previous() || set.previous().status() === Data.SetStatus.Finished))
+                        set.status(Data.SetStatus.Ready);
                 }
             });
             Program.instance.showDialog(dialog);

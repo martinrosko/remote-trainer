@@ -1,3 +1,13 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var RemoteTrainer;
 (function (RemoteTrainer) {
     RemoteTrainer.DEMODATA = true;
@@ -15,6 +25,7 @@ var RemoteTrainer;
             this.uiFooterTemplateName = ko.observable();
             this.globalTimerPaused = false;
             this.dialogs = ko.observableArray();
+            this.messageBox = ko.observable();
             window.setInterval(function (app) {
                 if (!app.globalTimerPaused)
                     Program.instance.GlobalTimer.forEach(function (timer) { return timer.fn(timer.context); });
@@ -34,6 +45,13 @@ var RemoteTrainer;
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
+                //let dialog = new CreateWorkoutDialog([this.m_workoutTemplate]);
+                //dialog.closed.add(this, (sender, e) => {
+                //    if (dialog.dialogResult) {
+                //        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
+                //    }
+                //});
+                //Program.instance.showDialog(dialog);
                 ko.applyBindings(this);
             }
             else {
@@ -43,14 +61,19 @@ var RemoteTrainer;
                     _this.exercises = exercises;
                     _this.m_workoutTemplates = workouts;
                     if (!workoutId) {
-                        var workoutTemplate = _this.m_workoutTemplates.filter(function (wt) { return wt.name.startsWith("Chrbat"); });
-                        _this.m_dataProvider.instantiateWorkout(workoutTemplate[0], "FitUP: Chrbat, Triceps", new Date(2018, 1, 17, 8));
+                        var dialog_1 = new CreateWorkoutDialog(_this.m_workoutTemplates);
+                        dialog_1.closed.add(_this, function (sender, e) {
+                            if (dialog_1.dialogResult)
+                                _this.m_dataProvider.instantiateWorkout(dialog_1.selectedTemplate(), dialog_1.selectedTemplate().name, new Date(2018, 1, 21, 8));
+                        });
+                        Program.instance.showDialog(dialog_1);
+                        ko.applyBindings(_this);
                     }
                     else {
                         _this.m_dataProvider.loadWorkout(workoutId, function (workout) {
                             _this.workout = ko.observable(workout);
                             if (workout.status() === RemoteTrainer.Data.WorkoutStatus.Running)
-                                workout.status(RemoteTrainer.Data.WorkoutStatus.Paused);
+                                workout.pause();
                             MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                                 entityForm.form.caption = this.workout().name;
                                 entityForm.isDirty = true;
@@ -228,9 +251,9 @@ var RemoteTrainer;
             this.m_workoutTemplate.name = "Chrbat / Triceps";
             this.m_workoutTemplate.description = "Bla bla bla bla...";
             var set = new RemoteTrainer.Data.SetTemplate();
-            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
-            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
-            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 1, 10));
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 2, 10));
+            set.addSerie(new RemoteTrainer.Data.SerieTemplate(this.exercises[7], 3, 10));
             this.m_workoutTemplate.addSet(set);
             set = new RemoteTrainer.Data.SetTemplate();
             var serie1 = new RemoteTrainer.Data.SerieTemplate(this.exercises[6], 10, 50);
@@ -316,12 +339,16 @@ var RemoteTrainer;
         function Dialog() {
             this.dialogResult = false;
             this.closed = new Resco.Event(this);
+            this.closing = new Resco.Event(this);
             this.name = ko.observable();
             this.uiContentTemplateName = ko.observable();
         }
         Dialog.prototype.done = function () {
             this.dialogResult = true;
-            this.closed.raise(Resco.EventArgs.Empty, this);
+            var closingArgs = new Resco.EventArgs();
+            this.closing.raise(closingArgs, this);
+            if (!closingArgs.cancel)
+                this.closed.raise(Resco.EventArgs.Empty, this);
         };
         Dialog.prototype.cancel = function () {
             this.dialogResult = false;
@@ -330,5 +357,49 @@ var RemoteTrainer;
         return Dialog;
     }());
     RemoteTrainer.Dialog = Dialog;
+    var CreateWorkoutDialog = (function (_super) {
+        __extends(CreateWorkoutDialog, _super);
+        function CreateWorkoutDialog(workoutTemplates) {
+            var _this = _super.call(this) || this;
+            _this.name("Add Creaet Workout");
+            _this.uiContentTemplateName("tmplCreateWorkoutDialog");
+            _this.workoutTemplates = workoutTemplates;
+            _this.selectedTemplate = ko.observable(_this.workoutTemplates && _this.workoutTemplates.length > 0 ? _this.workoutTemplates[0] : undefined);
+            _this.date = ko.observable("Today");
+            return _this;
+        }
+        return CreateWorkoutDialog;
+    }(Dialog));
+    RemoteTrainer.CreateWorkoutDialog = CreateWorkoutDialog;
+    var MessageBoxClosedEventArgs = (function (_super) {
+        __extends(MessageBoxClosedEventArgs, _super);
+        function MessageBoxClosedEventArgs(button) {
+            var _this = _super.call(this) || this;
+            _this.button = button;
+            return _this;
+        }
+        return MessageBoxClosedEventArgs;
+    }(Resco.EventArgs));
+    RemoteTrainer.MessageBoxClosedEventArgs = MessageBoxClosedEventArgs;
+    var MessageBox = (function () {
+        function MessageBox(text, buttons, cancelButton) {
+            if (buttons === void 0) { buttons = ["OK"]; }
+            this.result = -1;
+            this.closed = new Resco.Event(this);
+            this.text = text;
+            this.cancelButton = cancelButton;
+            this.buttons = buttons;
+        }
+        MessageBox.prototype.show = function () {
+            Program.instance.messageBox(this);
+        };
+        MessageBox.prototype.buttonClick = function (index) {
+            if (index >= 0)
+                this.closed.raise(new MessageBoxClosedEventArgs(index), this);
+            Program.instance.messageBox(undefined);
+        };
+        return MessageBox;
+    }());
+    RemoteTrainer.MessageBox = MessageBox;
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=app.js.map

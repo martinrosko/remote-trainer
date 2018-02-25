@@ -88,7 +88,7 @@ var RemoteTrainer;
                         _this.uiOptionsPanelState(OptionPanelState.Opened);
                     }
                 }, _this);
-                _this.status = ko.observable();
+                _this.status = ko.observable(SerieStatus.Queued);
                 _this.status.subscribe(function (value) {
                     switch (value) {
                         case SerieStatus.Ready:
@@ -107,6 +107,8 @@ var RemoteTrainer;
                     var status = _this.status();
                     if (status === SerieStatus.Running)
                         return "url(\'Images/serieStatusRunning.png\')";
+                    else if (status === SerieStatus.Finished)
+                        return "url(\'Images/serieStatusFinished.png\')";
                     return "url(\'Images/serieStatusReady.png\')";
                 }, _this);
                 _this.uiStartedOn = ko.observable();
@@ -131,6 +133,10 @@ var RemoteTrainer;
                 _this.m_breakTimer.fn = _this._onBreakTick.bind(_this);
                 _this.next = ko.observable();
                 _this.previous = ko.observable();
+                _this.canMoveUp = ko.computed(function () {
+                    var previous = _this.previous();
+                    return (previous && (previous.status() === SerieStatus.Queued || previous.status() === SerieStatus.Ready));
+                });
                 return _this;
             }
             Serie.prototype.pause = function () {
@@ -169,6 +175,7 @@ var RemoteTrainer;
                         break;
                     }
                     case SerieStatus.Finished:
+                        this.uiOptionsContentTemplate("tmplOptionsSerieComplete");
                         this._toggleOptionsPanel();
                         break;
                 }
@@ -197,10 +204,16 @@ var RemoteTrainer;
                     if (previousSet)
                         previousSet.next(this.previous());
                     this.parent.series.valueHasMutated();
+                    if (this.status() === SerieStatus.Ready) {
+                        var currentBreak = this.break();
+                        this.status(SerieStatus.Queued);
+                        this.previous().status(SerieStatus.Ready);
+                        this.previous().break(currentBreak);
+                    }
                 }
             };
             Serie.prototype.moveUp = function () {
-                if (this.previous()) {
+                if (this.canMoveUp()) {
                     var series = this.parent.series();
                     series.splice(this.order() - 1, 1);
                     series.splice(this.order() - 2, 0, this);
@@ -217,38 +230,64 @@ var RemoteTrainer;
                     if (nextSet)
                         nextSet.previous(this.next());
                     this.parent.series.valueHasMutated();
-                    //if (this.next().uiStatus() === SerieStatus.Ready) {
-                    //    // FIXME: create postpone method that  handles breaks and uiStatus in separate method
-                    //    this.next().series()[0].uiStatus(SerieStatus.Queued);
-                    //    this.start();
-                    //}
-                }
-            };
-            Serie.prototype.remove = function (bAskConfirm) {
-                if (bAskConfirm === void 0) { bAskConfirm = true; }
-                if (!bAskConfirm || confirm("Remove the serie?")) {
-                    this.parent.series.splice(this.order() - 1, 1);
-                    if (this.id && !this.parent.removedSeries.containsKey(this.id))
-                        this.parent.removedSeries.set(this.id, this);
-                    if (this.previous())
-                        this.previous().next(this.next());
-                    if (this.next())
-                        this.next().previous(this.previous());
-                    var next = this.next();
-                    while (next) {
-                        next.order(next.order() - 1);
-                        next = next.next();
+                    if (this.next().status() === SerieStatus.Ready) {
+                        var currentBreak = this.next().break();
+                        this.next().status(SerieStatus.Queued);
+                        this.status(SerieStatus.Ready);
+                        this.break(currentBreak);
                     }
                 }
             };
-            Serie.prototype.copyTo = function (dst) {
+            Serie.prototype.remove = function (bAskConfirm) {
+                var _this = this;
+                if (bAskConfirm === void 0) { bAskConfirm = true; }
+                if (bAskConfirm) {
+                    var confirm_1 = new RemoteTrainer.MessageBox("Do you want to remove only this serie or whole exercise?", ["Just the Serie", "Whole Exercise"], "Cancel");
+                    confirm_1.closed.add(this, function (sender, e) {
+                        if (e.button === 0) {
+                            _this._removeSerie();
+                        }
+                        else if (e.button === 1) {
+                            var exercise = _this.exercise;
+                            var series = _this.parent.series();
+                            for (var i = series.length - 1; i >= 0; i--) {
+                                if (series[i].exercise === exercise && (series[i].status() === SerieStatus.Ready || series[i].status() === SerieStatus.Queued))
+                                    series[i].remove(false);
+                            }
+                        }
+                    });
+                    confirm_1.show();
+                }
+                else {
+                    this._removeSerie();
+                }
+            };
+            Serie.prototype._removeSerie = function () {
+                this.parent.series.splice(this.order() - 1, 1);
+                if (this.id && !this.parent.removedSeries.containsKey(this.id))
+                    this.parent.removedSeries.set(this.id, this);
+                if (this.previous())
+                    this.previous().next(this.next());
+                if (this.next())
+                    this.next().previous(this.previous());
+                var next = this.next();
+                while (next) {
+                    next.order(next.order() - 1);
+                    next = next.next();
+                }
+            };
+            Serie.prototype.copyTo = function (dst, bAsTemplate) {
+                if (bAsTemplate === void 0) { bAsTemplate = false; }
                 _super.prototype.copyTo.call(this, dst);
-                dst.uiAmount(this.uiAmount());
-                dst.uiReps(this.uiReps());
-                dst.uiStartedOn(this.uiStartedOn());
-                dst.uiFinishedOn(this.uiFinishedOn());
-                dst.duration(this.duration());
-                dst.status(this.status());
+                if (dst instanceof Serie) {
+                    dst.uiAmount(this.uiAmount());
+                    dst.uiReps(this.uiReps());
+                    dst.uiStartedOn(this.uiStartedOn());
+                    dst.uiFinishedOn(this.uiFinishedOn());
+                    dst.duration(this.duration());
+                    dst.status(this.status());
+                    dst.break(this.break());
+                }
             };
             Serie.prototype.clone = function () {
                 var result = new Serie();
@@ -256,8 +295,9 @@ var RemoteTrainer;
                 return result;
             };
             Serie.prototype.addClone = function () {
-                // FIXME: clone self, not template
-                this.parent.addSerie(new Serie(this.clone()));
+                var cloneTemplate = new SerieTemplate();
+                this.copyTo(cloneTemplate);
+                this.parent.addSerie(new Serie(cloneTemplate));
             };
             Serie.prototype._toggleOptionsPanel = function () {
                 this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);

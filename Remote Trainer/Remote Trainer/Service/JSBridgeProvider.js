@@ -151,11 +151,13 @@ var RemoteTrainer;
                     result.id = entity[0].id;
                     result.name = entity[0].properties.name;
                     result.description = entity[0].properties.comments;
-                    result.status(entity[0].properties.statuscode);
+                    result.status(parseInt(entity[0].properties.statuscode));
                     if (entity[0].properties.started_on)
                         result.startedOn(new Date(entity[0].properties.actualstart));
                     if (entity[0].properties.finished_on)
                         result.finishedOn(new Date(entity[0].properties.actualend));
+                    if (entity[0].properties.duration)
+                        result.duration(parseInt(entity[0].properties.duration));
                     _this._loadSets(result.id, function (sets) {
                         if (sets)
                             sets.forEach(function (set) { return result.addSet(set); });
@@ -190,8 +192,10 @@ var RemoteTrainer;
             JSBridgeProvider.prototype._loadSet = function (setEntity, onLoaded) {
                 var set = new RemoteTrainer.Data.Set();
                 set.id = setEntity.id;
-                set.order(setEntity.properties.order);
-                //set.duration(0);  FIXME: set duration
+                set.order(parseInt(setEntity.properties.order));
+                set.status(parseInt(setEntity.properties.statuscode));
+                if (setEntity.properties.duration)
+                    set.duration(parseInt(setEntity.properties.duration));
                 // load workout sets
                 this._loadSeries(set.id, function (series) {
                     if (series)
@@ -213,18 +217,21 @@ var RemoteTrainer;
                         for (var i = 0; i < serieEntities.length; i++) {
                             var serie = new RemoteTrainer.Data.Serie();
                             serie.id = serieEntities[i].id;
-                            serie.order(serieEntities[i].properties.order);
-                            serie.amount = serieEntities[i].properties.amount;
-                            serie.uiAmount(serie.amount);
-                            serie.reps = serieEntities[i].properties.reps;
-                            serie.uiReps(serie.reps);
+                            serie.order(parseInt(serieEntities[i].properties.order));
+                            serie.amount = serieEntities[i].properties.amount ? parseInt(serieEntities[i].properties.amount) : 0;
+                            serie.uiAmount(serieEntities[i].properties.actual_amount ? parseInt(serieEntities[i].properties.actual_amount) : serie.amount);
+                            serie.reps = serieEntities[i].properties.reps ? parseInt(serieEntities[i].properties.reps) : 0;
+                            serie.uiReps(serieEntities[i].properties.actual_reps ? parseInt(serieEntities[i].properties.actual_reps) : serie.reps);
                             serie.exercise = _this.m_exercises.firstOrDefault(function (exercise) { return exercise.id === serieEntities[i].properties.exercise.id; });
                             if (serieEntities[i].properties.started_on)
                                 serie.uiStartedOn(new Date(serieEntities[i].properties.started_on));
                             if (serieEntities[i].properties.finished_on)
                                 serie.uiFinishedOn(new Date(serieEntities[i].properties.finished_on));
-                            serie.status(serieEntities[i].properties.statuscode);
-                            serie.uiDifficulty(serieEntities[i].properties.difficulty);
+                            if (serieEntities[i].properties.duration)
+                                serie.duration(parseInt(serieEntities[i].properties.duration));
+                            serie.status(parseInt(serieEntities[i].properties.statuscode));
+                            if (serieEntities[i].properties.difficulty)
+                                serie.uiDifficulty(RemoteTrainer.Data.Serie.difficulties[parseInt(serieEntities[i].properties.difficulty) - 1]);
                             result.push(serie);
                         }
                         onLoaded(result);
@@ -239,6 +246,7 @@ var RemoteTrainer;
                 jsbWorkout.properties["actualstart"] = workout.startedOn();
                 jsbWorkout.properties["actualend"] = workout.finishedOn();
                 jsbWorkout.properties["statuscode"] = workout.status();
+                jsbWorkout.properties["duration"] = workout.duration();
                 jsbWorkout.save(function (error) {
                     var _this = this;
                     if (!error) {
@@ -272,6 +280,7 @@ var RemoteTrainer;
                 var jsbSet = new MobileCRM.DynamicEntity("set", set.id);
                 jsbSet.properties["order"] = set.order();
                 jsbSet.properties["statuscode"] = set.status();
+                jsbSet.properties["duration"] = set.duration();
                 jsbSet.properties["workoutid"] = new MobileCRM.Reference("workout", set.parent.id, "");
                 jsbSet.save(function (error) {
                     if (!error) {
@@ -301,11 +310,12 @@ var RemoteTrainer;
             JSBridgeProvider._saveSerie = function (serie, callback) {
                 var jsbSerie = new MobileCRM.DynamicEntity("serie", serie.id);
                 jsbSerie.properties["order"] = serie.order();
-                jsbSerie.properties["amount"] = serie.uiAmount();
-                jsbSerie.properties["reps"] = serie.uiReps();
+                jsbSerie.properties["actual_amount"] = serie.uiAmount();
+                jsbSerie.properties["actual_reps"] = serie.uiReps();
                 jsbSerie.properties["difficulty"] = serie.difficulty();
                 jsbSerie.properties["started_on"] = serie.uiStartedOn();
                 jsbSerie.properties["finished_on"] = serie.uiFinishedOn();
+                jsbSerie.properties["duration"] = serie.duration();
                 jsbSerie.properties["statuscode"] = serie.status();
                 jsbSerie.properties["setid"] = new MobileCRM.Reference("set", serie.parent.id, "");
                 if (!serie.id) {

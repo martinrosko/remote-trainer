@@ -21,6 +21,8 @@
 
         public dialogs: KnockoutObservableArray<Dialog>;
 
+        public messageBox: KnockoutObservable<MessageBox>;
+
         public GlobalTimer: GlobalTimer[] = [];
         public globalTimerPaused: boolean;
 
@@ -34,6 +36,7 @@
             this.globalTimerPaused = false;
 
             this.dialogs = ko.observableArray<Dialog>();
+            this.messageBox = ko.observable<MessageBox>();
 
             window.setInterval((app: Program) => {
                 if (!app.globalTimerPaused)
@@ -45,6 +48,15 @@
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+
+                //let dialog = new CreateWorkoutDialog([this.m_workoutTemplate]);
+                //dialog.closed.add(this, (sender, e) => {
+                //    if (dialog.dialogResult) {
+                //        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
+                //    }
+                //});
+                //Program.instance.showDialog(dialog);
+
                 ko.applyBindings(this);
             }
             else {
@@ -56,15 +68,19 @@
                     this.m_workoutTemplates = workouts;
 
                     if (!workoutId) {
-                        let workoutTemplate = this.m_workoutTemplates.filter(wt => wt.name.startsWith("Chrbat"));
-
-                        this.m_dataProvider.instantiateWorkout(workoutTemplate[0], "FitUP: Chrbat, Triceps", new Date(2018, 1, 17, 8));
+                        let dialog = new CreateWorkoutDialog(this.m_workoutTemplates);
+                        dialog.closed.add(this, (sender, e) => {
+                            if (dialog.dialogResult)
+                                this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 21, 8));
+                        });
+                        Program.instance.showDialog(dialog);
+                        ko.applyBindings(this);
                     }
                     else {
                         this.m_dataProvider.loadWorkout(workoutId, workout => {
                             this.workout = ko.observable(workout);
                             if (workout.status() === Data.WorkoutStatus.Running)
-                                workout.status(Data.WorkoutStatus.Paused);
+                                workout.pause();
 
                             MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                                 entityForm.form.caption = this.workout().name;
@@ -252,9 +268,9 @@
             this.m_workoutTemplate.description = "Bla bla bla bla..."
 
             var set = new Data.SetTemplate();
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 20, 10));
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 1, 10));
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 2, 10));
+            set.addSerie(new Data.SerieTemplate(this.exercises[7], 3, 10));
 
             this.m_workoutTemplate.addSet(set);
 
@@ -360,6 +376,7 @@
 
     export class Dialog {
         public closed: Resco.Event<Resco.EventArgs>;
+        public closing: Resco.Event<Resco.EventArgs>;
         public dialogResult: boolean;
         public name: KnockoutObservable<string>;
         public uiContentTemplateName: KnockoutObservable<string>;
@@ -367,13 +384,18 @@
         constructor() {
             this.dialogResult = false;
             this.closed = new Resco.Event<Resco.EventArgs>(this);
+            this.closing = new Resco.Event<Resco.EventArgs>(this);
             this.name = ko.observable<string>();
             this.uiContentTemplateName = ko.observable<string>();
         }
 
         public done(): void {
             this.dialogResult = true;
-            this.closed.raise(Resco.EventArgs.Empty, this);
+
+            let closingArgs = new Resco.EventArgs();
+            this.closing.raise(closingArgs, this);
+            if (!closingArgs.cancel)
+                this.closed.raise(Resco.EventArgs.Empty, this);
         }
 
         public cancel(): void {
@@ -381,4 +403,57 @@
             this.closed.raise(Resco.EventArgs.Empty, this);
         }
     }
+
+    export class CreateWorkoutDialog extends Dialog {
+        public workoutTemplates: Data.WorkoutTemplate[];
+        public selectedTemplate: KnockoutObservable<Data.WorkoutTemplate>;
+        public date: KnockoutObservable<string>;
+
+        constructor(workoutTemplates: Data.WorkoutTemplate[]) {
+            super();
+
+            this.name("Add Creaet Workout");
+            this.uiContentTemplateName("tmplCreateWorkoutDialog");
+
+            this.workoutTemplates = workoutTemplates;
+            this.selectedTemplate = ko.observable<Data.WorkoutTemplate>(this.workoutTemplates && this.workoutTemplates.length > 0 ? this.workoutTemplates[0] : undefined);
+
+            this.date = ko.observable<string>("Today");
+        }
+    }
+
+    export class MessageBoxClosedEventArgs extends Resco.EventArgs {
+        public button: number;
+        constructor(button: number) {
+            super();
+            this.button = button;
+        }
+    }
+
+    export class MessageBox {
+        public closed: Resco.Event<MessageBoxClosedEventArgs>;
+        public text: string;
+        public cancelButton: string;
+        public buttons: string[];
+        public result: number;
+
+        constructor(text: string, buttons: string[] = ["OK"], cancelButton?: string) {
+            this.result = -1;
+            this.closed = new Resco.Event<MessageBoxClosedEventArgs>(this);
+            this.text = text;
+            this.cancelButton = cancelButton;
+            this.buttons = buttons;
+        }
+
+        public show(): void {
+            Program.instance.messageBox(this);
+        }
+
+        public buttonClick(index: number): void {
+            if (index >= 0)
+                this.closed.raise(new MessageBoxClosedEventArgs(index), this);
+            Program.instance.messageBox(undefined);
+        }
+    }
+
 }

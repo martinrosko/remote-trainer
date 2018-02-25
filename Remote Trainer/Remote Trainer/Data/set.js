@@ -57,8 +57,13 @@ var RemoteTrainer;
                 _this.status.subscribe(function (value) {
                     switch (value) {
                         case SetStatus.Queued:
+                            RemoteTrainer.Program.instance.clearTimer(_this.m_runningTimer);
+                            if (_this.series().length > 0)
+                                _this.series()[0].status(Data.SerieStatus.Queued);
+                            break;
                         case SetStatus.Finished:
                             RemoteTrainer.Program.instance.clearTimer(_this.m_runningTimer);
+                            _this.uiOptionsPanelState(Data.OptionPanelState.Closed);
                             break;
                         case SetStatus.Running:
                             if (!_this.m_runningTimer) {
@@ -100,11 +105,12 @@ var RemoteTrainer;
                 return _this;
             }
             Set.prototype.pause = function () {
-                var activeSerie = this.series().firstOrDefault(function (serie) { return serie.status() === Data.SerieStatus.Running || serie.status() === Data.SerieStatus.Ready; });
-                if (activeSerie)
+                var activeSerie = this.series().firstOrDefault(function (serie) { return serie.status() === Data.SerieStatus.Running; });
+                if (activeSerie) {
                     activeSerie.pause();
-                if (this.status() === SetStatus.Running)
-                    this.status(SetStatus.Paused);
+                    if (this.status() === SetStatus.Running)
+                        this.status(SetStatus.Paused);
+                }
             };
             Set.prototype.resume = function (bIgnorePaused) {
                 if (this.status() === SetStatus.Paused && (bIgnorePaused || !this.series().firstOrDefault(function (serie) { return serie.status() === Data.SerieStatus.Paused; })))
@@ -164,10 +170,14 @@ var RemoteTrainer;
                     if (previousSet)
                         previousSet.next(this.previous());
                     this.parent.sets.valueHasMutated();
-                    //if (this.uiStatus() === SetStatus.Ready) {
-                    //    this.previous().ready(this.series()[0].break());    // set the actual lenght of current break to new set that is ready
-                    //    this.queue();
-                    //}
+                    if (this.status() === SetStatus.Ready) {
+                        var currentBreak = this.series().length > 0 ? this.series()[0].break() : 0;
+                        this.status(SetStatus.Queued);
+                        if (this.previous().series().length > 0 && currentBreak > 0) {
+                            this.previous().status(SetStatus.Ready);
+                            this.previous().series()[0].break(currentBreak);
+                        }
+                    }
                 }
             };
             Set.prototype.moveUp = function () {
@@ -188,34 +198,54 @@ var RemoteTrainer;
                     if (nextSet)
                         nextSet.previous(this.next());
                     this.parent.sets.valueHasMutated();
-                    //if (this.next().uiStatus() === SetStatus.Ready) {
-                    //    this.ready(this.next().series()[0].break());
-                    //    this.next().queue();
-                    //}
+                    if (this.next().status() === SetStatus.Ready) {
+                        var currentBreak = this.next().series().length > 0 ? this.next().series()[0].break() : 0;
+                        this.next().status(SetStatus.Queued);
+                        if (this.series().length > 0 && currentBreak > 0) {
+                            this.status(SetStatus.Ready);
+                            this.series()[0].break(currentBreak);
+                        }
+                    }
                 }
             };
-            Set.prototype.remove = function (askConfirm) {
-                if (askConfirm === void 0) { askConfirm = true; }
-                if (!askConfirm || confirm("Remove the entire set?")) {
-                    this.parent.sets.splice(this.order() - 1, 1);
-                    if (this.id && !this.parent.removedSets.containsKey(this.id))
-                        this.parent.removedSets.set(this.id, this);
-                    this.series().forEach(function (serie) { return serie.remove(false); }, this);
-                    if (this.previous())
-                        this.previous().next(this.next());
-                    if (this.next())
-                        this.next().previous(this.previous());
-                    var next = this.next();
-                    while (next) {
-                        next.order(next.order() - 1);
-                        next = next.next();
+            Set.prototype.remove = function (bAskConfirm) {
+                var _this = this;
+                if (bAskConfirm === void 0) { bAskConfirm = true; }
+                if (bAskConfirm) {
+                    var confirm_1 = new RemoteTrainer.MessageBox("Do you want to remove the entire set?", ["Yes"], "No");
+                    confirm_1.closed.add(this, function (sender, e) { return _this._removeSet(); });
+                    confirm_1.show();
+                }
+                else {
+                    this._removeSet();
+                }
+            };
+            Set.prototype._removeSet = function () {
+                this.parent.sets.splice(this.order() - 1, 1);
+                if (this.id && !this.parent.removedSets.containsKey(this.id))
+                    this.parent.removedSets.set(this.id, this);
+                this.series().forEach(function (serie) { return serie.remove(false); }, this);
+                if (this.previous())
+                    this.previous().next(this.next());
+                var next = this.next();
+                if (next) {
+                    next.previous(this.previous());
+                    if (this.status() === SetStatus.Ready) {
+                        next.status(SetStatus.Ready);
+                        this.parent.displayedSet(next);
                     }
+                }
+                while (next) {
+                    next.order(next.order() - 1);
+                    next = next.next();
                 }
             };
             Set.prototype.copyTo = function (dst) {
                 _super.prototype.copyTo.call(this, dst);
                 dst.duration(this.duration());
                 dst.series([]);
+                dst.next(this.next());
+                dst.previous(this.previous());
                 this.series().forEach(function (serie) { return dst.addSerie(serie.clone()); });
             };
             Set.prototype.clone = function () {
@@ -226,8 +256,16 @@ var RemoteTrainer;
             Set.prototype.modifySet = function (set) {
                 var _this = this;
                 //todo: clone set and modify it only if dialogresult = true
+                set.pause();
                 var clonedSet = set.clone();
                 var dialog = new ModifySetDialog(clonedSet);
+                dialog.closing.add(this, function (sender, e) {
+                    if (clonedSet.series().length === 0) {
+                        var alert_1 = new RemoteTrainer.MessageBox("Set cannot be empty");
+                        alert_1.show();
+                        e.cancel = true;
+                    }
+                });
                 dialog.closed.add(this, function (sender, e) {
                     if (dialog.dialogResult) {
                         var series = set.series();
@@ -237,6 +275,21 @@ var RemoteTrainer;
                                 set.removedSeries.set(oldSerie.id, oldSerie);
                         }, _this);
                         clonedSet.copyTo(set);
+                        series = set.series();
+                        set.uiOptionsPanelState(Data.OptionPanelState.Closed);
+                        // if we removed all active series. then complete this st and ready the next one
+                        if (set.series()[set.series().length - 1].status() === Data.SerieStatus.Finished) {
+                            set.status(SetStatus.Finished);
+                            if (set.next())
+                                set.next().status(SetStatus.Ready);
+                        }
+                        // if this is running set and we removed serie that was ready, make ready first queued serie
+                        if (set.status() !== SetStatus.Finished && set.status() !== SetStatus.Queued && !series.some(function (s) { return s.status() === Data.SerieStatus.Ready; })) {
+                            for (var i = 0; i < series.length; i++) {
+                                if (series[i].status() === Data.SerieStatus.Queued)
+                                    series[i].status(Data.SerieStatus.Ready);
+                            }
+                        }
                     }
                 });
                 RemoteTrainer.Program.instance.showDialog(dialog);
