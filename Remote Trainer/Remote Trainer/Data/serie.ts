@@ -36,6 +36,7 @@
         public uiDifficulty: KnockoutObservable<string>;
         public uiOptionsContentTemplate: KnockoutObservable<string>;
 		public uiOptionsPanelState: KnockoutObservable<OptionPanelState>;
+		public uiCountDown: KnockoutObservable<number>;
 		public parent: Set;
         public next: Serie;
 		public previous: Serie;
@@ -67,7 +68,9 @@
                     return Math.round((finished.getTime() - started.getTime()) / 1000);
                 }
                 return -1;
-            });
+			});
+
+			this.uiCountDown = ko.observable(-1);
 		}
 
 		public activate(): void {
@@ -87,16 +90,24 @@
                     this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
                     break;
 
-                case SerieStatus.Ready:
-                    this.uiStatus(SerieStatus.Running);
-                    this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                    this.uiOptionsPanelState(OptionPanelState.Opening);
-                    var now = new Date();
-                    this.uiStartedOn(now);
-                    this.uiFinishedOn(now);
-                    this.m_timer = window.setInterval(() => {
-                        this.uiFinishedOn(new Date());
-                    }, 1000);
+				case SerieStatus.Ready:
+					// start countdown
+					if (!this.m_timer) {
+						this.parent.activeBreakIndex(-1);
+						this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+						this.uiOptionsPanelState(OptionPanelState.Opening);
+						this.uiCountDown(5);
+						this.m_timer = window.setInterval(() => {
+							var cntDown = this.uiCountDown() - 1;
+							this.uiCountDown(cntDown);
+							if (cntDown < 0)
+								this._runSerie();
+						}, 1000);
+					}
+					else {
+						this.uiCountDown(-1);
+						this._runSerie();
+					}
                     break;
 
                 case SerieStatus.Running:
@@ -117,7 +128,20 @@
                     this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
                     break;
             }
-        }
+		}
+
+		private _runSerie(): void {
+			this.uiStatus(SerieStatus.Running);
+
+			var now = new Date();
+			this.uiStartedOn(now);
+			this.uiFinishedOn(now);
+
+			window.clearInterval(this.m_timer);
+			this.m_timer = window.setInterval(() => {
+				this.uiFinishedOn(new Date());
+			}, 1000);
+		}
 
         private m_timer: number;
     }
