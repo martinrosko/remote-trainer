@@ -72,34 +72,24 @@ var RemoteTrainer;
                     set.order = index;
                     sets.push(set);
                     if (index > 0) {
-                        sets[index - 1].next = set;
-                        set.previous = sets[index - 1];
+                        sets[index - 1].next(set);
+                        set.previous(sets[index - 1]);
                     }
                 }, _this);
                 _this.sets.valueHasMutated();
-                _this.activeSetIndex = ko.observable(-1);
-                _this.activeSetIndex.subscribe(function (value) {
-                    var set = _this.sets()[value];
-                    set.start();
-                });
-                _this.activeSet = ko.computed(function () {
-                    var index = _this.activeSetIndex();
-                    if (index < _this.sets().length)
-                        return _this.sets()[index];
-                    return null;
-                }, _this);
+                _this.activeSet = ko.observable(sets[0]);
+                _this.uiCategoriesInSet = ko.observableArray();
+                _this.uiExercisesInSet = ko.observableArray();
+                _this._updateWorkoutItems();
                 return _this;
             }
             Workout.prototype.start = function () {
                 this.uiDuration(0);
                 this.uiStartedOn(new Date());
-                if (this.sets().length > 0) {
-                    this.activeSetIndex(0);
+                if (this.sets().length > 0)
                     this.uiStatus(WorkoutStatus.Running);
-                }
-                else {
+                else
                     stop();
-                }
                 this.updateCompletionStatus();
             };
             Workout.prototype.pause = function () {
@@ -111,6 +101,16 @@ var RemoteTrainer;
             Workout.prototype.stop = function () {
                 this.uiFinishedOn(new Date());
                 this.uiStatus(WorkoutStatus.Finished);
+            };
+            Workout.prototype.showPreviousSet = function () {
+                var activeSet = this.activeSet();
+                if (activeSet && activeSet.previous())
+                    this.activeSet(activeSet.previous());
+            };
+            Workout.prototype.showNextSet = function () {
+                var activeSet = this.activeSet();
+                if (activeSet && activeSet.next())
+                    this.activeSet(activeSet.next());
             };
             Workout.prototype.updateCompletionStatus = function () {
                 var serieCount = 0;
@@ -127,6 +127,23 @@ var RemoteTrainer;
                 }, this);
                 this.uiCompletion(Math.round((completedCount * 100) / serieCount));
                 this.uiEstDurationLeft(estDurationLeft);
+            };
+            Workout.prototype._updateWorkoutItems = function () {
+                var _this = this;
+                var sets = this.sets();
+                var catsInSet = this.uiCategoriesInSet();
+                var exInSet = this.uiExercisesInSet();
+                sets.forEach(function (set) {
+                    var series = set.series();
+                    series.forEach(function (serie) {
+                        if (!catsInSet.contains(serie.exercise.category))
+                            catsInSet.push(serie.exercise.category);
+                        if (!exInSet.contains(serie.exercise))
+                            exInSet.push(serie.exercise);
+                    }, _this);
+                }, this);
+                this.uiCategoriesInSet.valueHasMutated();
+                this.uiExercisesInSet.valueHasMutated();
             };
             return Workout;
         }(WorkoutTemplate));

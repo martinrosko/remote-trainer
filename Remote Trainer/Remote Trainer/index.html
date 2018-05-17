@@ -41,16 +41,16 @@
     </script>
 
     <script id="tmplApplication" type="text/html">
-        <div class="page" style="width: 480px; height: 800px; background: #eeeeee">
+        <div class="page" style="width: 480px; height: 800px; background: #eeeeee; padding: 10px">
             <!-- ko template: { name: 'tmplWorkoutPage', data: workout } --><!-- /ko -->
-            <br />
-            <br />
-            <!-- ko with: workout -->
-                <!-- ko if: activeSet() -->
-                    <!-- ko template: { name: 'tmplSetPage', data: activeSet } --><!-- /ko -->
-                <!-- /ko -->
-            <!-- /ko -->
         </div>
+        <!-- ko with: workout -->
+            <!-- ko if: activeSet() -->
+            <div class="page" style="position: absolute; left: 520px; top: 0px; overflow: hidden; width: 480px; height: 800px; background: #eeeeee">
+                <!-- ko template: { name: 'tmplSetPage', data: activeSet } --><!-- /ko -->
+            </div>
+            <!-- /ko -->
+        <!-- /ko -->
     </script>
 
     <script id="tmplWorkoutPage" type="text/html">
@@ -70,12 +70,38 @@
         <!-- ko if: uiStatus() === RemoteTrainer.Data.WorkoutStatus.Finished -->
         Workout summary
         <!-- /ko -->
+        <br />
+        <br />
+        <!-- ko foreach: sets -->
+        <div style="width: 100%; border: solid 1px black; border-bottom-width: 0px; margin-bottom: 10px">
+            <div style="width: 100%; padding: 3px; border-bottom: solid 1px black; font-weight: bold">Set</div>
+            <!-- ko foreach: exercises -->
+                <div style="width: 100%; padding: 3px; border-bottom: solid 1px black" data-bind="text: name, style: {backgroundColor: category.colorLight}"></div>
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <br />
+        <br />
+        <!-- ko foreach: uiCategoriesInSet -->
+        <div style="width: 100%; border: solid 1px black; border-bottom-width: 0px; margin-bottom: 10px">
+            <div style="width: 100%; padding: 3px; border-bottom: solid 1px black; font-weight: bold" data-bind="text: name, style: {backgroundColor: colorDark}"></div>
+            <!-- ko foreach: $parent.uiExercisesInSet -->
+                <!-- ko if: $data.category === $parent -->
+                <div style="width: 100%; padding: 3px; border-bottom: solid 1px black" data-bind="text: name, style: {backgroundColor: category.colorLight}"></div>
+                <!-- /ko -->
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
     </script>
 
     <script id="tmplSetPage" type="text/html">
         <div class="set">
-            <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-                Break: <span class="highlight" data-bind="text: breaks[0]" /><span class="annotation"> sec</span>
+            <div>
+                <!-- ko if: previous() --><span data-bind="click: parent.showPreviousSet.bind(parent)">Previous</span><!-- /ko -->&nbsp;
+                <!-- ko if: next() --><span data-bind="click: parent.showNextSet.bind(parent)">Next</span><!-- /ko -->
+            </div>
+            <div class="break">
+                Break: <span class="highlight" data-bind="text: breaks[0], css: {bigDigit: activeBreakIndex() === 0 }" /><span class="annotation"> sec</span>
             </div>
             <!-- ko foreach: series -->
                 <!-- ko template: { name: 'tmplSerie' } --><!-- /ko -->
@@ -94,7 +120,7 @@
                 <!-- /ko -->
                 <div class="cell button imgStatus" style="width: 55px" data-bind="style: { backgroundColor: exercise.category.colorLight, backgroundImage: 'url(\'Images/serieStatus' + RemoteTrainer.Data.SerieStatus[uiStatus()] + '.png\')' }, click: onStatusClicked"></div>
             </div>
-            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready -->
+            <!-- ko if: uiStatus() === RemoteTrainer.Data.SerieStatus.Ready || uiStatus() === RemoteTrainer.Data.SerieStatus.Finished -->
             <div class="cell button imgStatus" style="width: 55px" data-bind="style: { backgroundColor: exercise.category.colorLight, backgroundImage: 'url(\'Images/serieStatus' + RemoteTrainer.Data.SerieStatus[uiStatus()] + '.png\')' }, click: onStatusClicked"></div>
             <!-- /ko -->
             <div class="info" data-bind="style: { backgroundColor: 'white' }">
@@ -114,14 +140,22 @@
                 <span class="bigDigit" data-bind="text: uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
             </div>
         </div>
-        <div class="break" style="padding: 5px; box-sizing: border-box; border-bottom: solid 1px black; background: white; font-size: 12px; text-align: center; background: #eeeeee">
-            <!-- ko if: parent.breaks[order + 1]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order]" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
+        <div class="break">
+            <!-- ko if: parent.breaks[order + 1]() >= 0 -->Break: <span class="highlight" data-bind="text: parent.breaks[order + 1], css: { bigDigit: parent.activeBreakIndex() === order + 1 }" /><span class="annotation"> sec</span><!-- /ko -->&nbsp;
         </div>
     </script>
 
     <script id="tmplOptionsRunningSerie" type="text/html">
         <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
-            <span class="bigDigit" data-bind="text: uiDuration" /><span class="annotation"> sec</span>
+            <!-- ko if: uiCountDown() > 0 -->
+                <span class="bigDigit countDown" data-bind="text: uiCountDown" /><span class="annotation countDown"> sec</span>
+            <!-- /ko -->
+            <!-- ko if: uiCountDown() === 0 -->
+                <span class="bigDigit countDown">Go!</span>
+            <!-- /ko -->
+            <!-- ko if: uiCountDown() < 0 -->
+                <span class="bigDigit" data-bind="text: uiDuration" /><span class="annotation"> sec</span>
+            <!-- /ko -->
         </div>
     </script>
 

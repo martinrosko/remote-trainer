@@ -57,6 +57,7 @@ var RemoteTrainer;
                     }
                     return -1;
                 });
+                _this.uiCountDown = ko.observable(-1);
                 return _this;
             }
             Serie.prototype.activate = function () {
@@ -74,15 +75,23 @@ var RemoteTrainer;
                         this.uiOptionsContentTemplate("tmplOptionsSerieSettings");
                         break;
                     case SerieStatus.Ready:
-                        this.uiStatus(SerieStatus.Running);
-                        this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
-                        this.uiOptionsPanelState(OptionPanelState.Opening);
-                        var now = new Date();
-                        this.uiStartedOn(now);
-                        this.uiFinishedOn(now);
-                        this.m_timer = window.setInterval(function () {
-                            _this.uiFinishedOn(new Date());
-                        }, 1000);
+                        // start countdown
+                        if (!this.m_timer) {
+                            this.parent.activeBreakIndex(-1);
+                            this.uiOptionsContentTemplate("tmplOptionsRunningSerie");
+                            this.uiOptionsPanelState(OptionPanelState.Opening);
+                            this.uiCountDown(5);
+                            this.m_timer = window.setInterval(function () {
+                                var cntDown = _this.uiCountDown() - 1;
+                                _this.uiCountDown(cntDown);
+                                if (cntDown < 0)
+                                    _this._runSerie();
+                            }, 1000);
+                        }
+                        else {
+                            this.uiCountDown(-1);
+                            this._runSerie();
+                        }
                         break;
                     case SerieStatus.Running:
                         this.uiStatus(SerieStatus.Finished);
@@ -101,6 +110,17 @@ var RemoteTrainer;
                         this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closing ? OptionPanelState.Opening : OptionPanelState.Closing);
                         break;
                 }
+            };
+            Serie.prototype._runSerie = function () {
+                var _this = this;
+                this.uiStatus(SerieStatus.Running);
+                var now = new Date();
+                this.uiStartedOn(now);
+                this.uiFinishedOn(now);
+                window.clearInterval(this.m_timer);
+                this.m_timer = window.setInterval(function () {
+                    _this.uiFinishedOn(new Date());
+                }, 1000);
             };
             return Serie;
         }(SerieTemplate));

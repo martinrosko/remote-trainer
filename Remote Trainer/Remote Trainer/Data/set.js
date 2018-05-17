@@ -32,7 +32,11 @@ var RemoteTrainer;
             function Set(template) {
                 var _this = _super.call(this) || this;
                 template.copyTo(_this);
+                _this.previous = ko.observable();
+                _this.next = ko.observable();
                 _this.breaks = [ko.observable(-1)];
+                _this.activeBreakIndex = ko.observable(-1);
+                _this.exercises = ko.observableArray();
                 _this.series = ko.observableArray();
                 var series = _this.series();
                 template.serieTemplates.forEach(function (serieTemplate, index) {
@@ -45,27 +49,34 @@ var RemoteTrainer;
                         serie.previous = series[index - 1];
                     }
                     _this.breaks.push(ko.observable(-1));
+                    if (!_this.exercises().contains(serie.exercise))
+                        _this.exercises().push(serie.exercise);
                 }, _this);
                 _this.series.valueHasMutated();
                 return _this;
             }
             Set.prototype.serieStatusChanged = function (serie, status) {
                 var index = this.series().indexOf(serie);
+                if (index === 0 && status === Data.SerieStatus.Ready) {
+                    this.startBreak(0);
+                }
                 if (status === Data.SerieStatus.Finished) {
-                    this.startBreak(index);
+                    this.startBreak(index + 1);
                     this.parent.updateCompletionStatus();
                 }
                 else if (status === Data.SerieStatus.Running)
-                    this.stopBreak(index);
+                    this.stopBreak(index + 1);
             };
             Set.prototype.startBreak = function (index) {
-                this.breaks[index + 1](0);
+                this.breaks[index](0);
+                this.activeBreakIndex(index);
                 this.m_timer = window.setInterval(function (breakStart) {
                     var now = Math.round(new Date().getTime() / 1000);
-                    this.breaks[index + 1](now - breakStart);
+                    this.breaks[index](now - breakStart);
                 }.bind(this), 1000, Math.round(new Date().getTime() / 1000));
             };
             Set.prototype.stopBreak = function (index) {
+                this.activeBreakIndex(-1);
                 if (this.m_timer) {
                     window.clearInterval(this.m_timer);
                     this.m_timer = 0;
@@ -74,16 +85,18 @@ var RemoteTrainer;
             Set.prototype.start = function () {
                 this.series()[0].activate();
             };
-            Set.prototype.onContinueClicked = function () {
-                //if (Program.instance.index < Program.instance.m_setTemplates.length - 1) {
-                //    var set = new Set(Program.instance.m_setTemplates[++Program.instance.index]);
-                //    Program.instance.set(set);
-                //    set.series()[0].uiStatus(Data.SerieStatus.Ready);
-                //}
+            Set.prototype.complete = function () {
             };
             return Set;
         }(SetTemplate));
         Data.Set = Set;
+        var SetStatus;
+        (function (SetStatus) {
+            SetStatus[SetStatus["Ready"] = 0] = "Ready";
+            SetStatus[SetStatus["Running"] = 1] = "Running";
+            SetStatus[SetStatus["Finished"] = 2] = "Finished";
+            SetStatus[SetStatus["Pending"] = 3] = "Pending";
+        })(SetStatus = Data.SetStatus || (Data.SetStatus = {}));
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=set.js.map
