@@ -36,7 +36,7 @@
         public uiStartedOn: KnockoutObservable<Date>;
         public uiFinishedOn: KnockoutObservable<Date>;
         public duration: KnockoutObservable<number>;
-        public uiDuration: KnockoutComputed<string>;
+        public uiDurations: KnockoutComputed<string>;  //help
         public uiAmount: KnockoutObservable<number>;
         public uiAmountHasFocus: KnockoutObservable<boolean>
         public uiReps: KnockoutObservable<number>;
