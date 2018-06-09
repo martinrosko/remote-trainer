@@ -360,6 +360,8 @@
                 if (dialog.dialogResult) {
                     let serie = new Serie();
                     serie.exercise = dialog.selectedExercise();
+                    serie.amount = 0;
+                    serie.reps = 0;
                     this.addSerie(serie);
                 }
             });
@@ -385,9 +387,11 @@
 
     export class AddSerieDialog extends Dialog {
         public categories: Category[];
-        public exercises: KnockoutComputed<Exercise[]>;
         public selectedCategory: KnockoutObservable<Category>;
         public selectedExercise: KnockoutObservable<Exercise>;
+
+        public selectBoxCategory: Resco.Controls.SelectBox<Category>;
+        public selectBoxExercise: Resco.Controls.SelectBox<Exercise>;
 
         private m_exercises: Exercise[];
 
@@ -397,17 +401,34 @@
             this.name("Add Serie");
             this.uiContentTemplateName("tmplAddSerieDialog");
 
+            this.selectBoxCategory = new Resco.Controls.SelectBox<Category>();
+            this.selectBoxCategory.items(categories);
+            this.selectBoxCategory.itemLabel("name");
+            this.selectBoxCategory.selectText("Please select a category...");
+            this.selectBoxCategory.selecteItemChanged.add(this, (sender, args) => {
+                this.selectedCategory(args.item);
+                if (args.item)
+                    this.selectBoxExercise.items(this.m_exercises.filter(exc => exc.category === args.item));
+                else
+                    this.selectBoxExercise.items([]);
+
+                this.selectBoxExercise.selectedItem(null);
+                this.selectBoxExercise.isExpanded(false);
+                this.selectedExercise(null);
+            });
+
+            this.selectBoxExercise = new Resco.Controls.SelectBox<Exercise>();
+            this.selectBoxExercise.itemLabel("name");
+            this.selectBoxExercise.selectText("Please select an exercise...");
+            this.selectBoxExercise.selecteItemChanged.add(this, (sender, args) => {
+                this.selectedExercise(args.item);
+            });
+
             this.categories = categories;
             this.m_exercises = exercises;
 
-            this.selectedCategory = ko.observable<Category>(this.categories && this.categories.length > 0 ? this.categories[0] : undefined);
-
-            this.exercises = ko.computed(() => {
-                let cat = this.selectedCategory();
-                return this.m_exercises.filter(exc => exc.category === cat);
-            }, this);
-
-            this.selectedExercise = ko.observable<Exercise>(this.exercises() && this.exercises().length > 0 ? this.exercises()[0] : undefined);
+            this.selectedCategory = ko.observable<Category>();
+            this.selectedExercise = ko.observable<Exercise>();
         }
     }
 

@@ -1,5 +1,5 @@
 ﻿module RemoteTrainer {
-    export const DEMODATA = true;
+    export const DEMODATA = false;
 
     export class GlobalTimer {
         public fn: (context: any) => void;
@@ -26,7 +26,7 @@
         public GlobalTimer: GlobalTimer[] = [];
         public globalTimerPaused: boolean;
 
-        private m_dataProvider: Service.IDataProvider;
+        public dataProvider: Service.IDataProvider;
 
         constructor() {
             this.uiSelectedTabIndex = ko.observable<number>(0);
@@ -49,57 +49,81 @@
                 this._createDemoData();
                 this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
 
-                //let dialog = new CreateWorkoutDialog([this.m_workoutTemplate]);
-                //dialog.closed.add(this, (sender, e) => {
-                //    if (dialog.dialogResult) {
-                //        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
-                //    }
-                //});
+                let dialog = new CreateWorkoutDialog([this.m_workoutTemplate, this.m_workoutTemplate, this.m_workoutTemplate], new Date().toString());
+                dialog.closed.add(this, (sender, e) => {
+                    if (dialog.dialogResult) {
+                        var newDate = new Date(dialog.date());
+                        newDate.setHours(8);
+                        alert(dialog.date());
+                        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
+                    }
+                });
                 //Program.instance.showDialog(dialog);
 
                 ko.applyBindings(this);
             }
             else {
-                this.m_dataProvider = new Service.JSBridgeProvider();
+                this.dataProvider = new Service.JSBridgeProvider();
 
-                this.m_dataProvider.initialize((categories, exercises, workouts) => {
+                this.dataProvider.initialize((categories, exercises, workouts) => {
                     this.categories = categories;
                     this.exercises = exercises;
                     this.m_workoutTemplates = workouts;
 
                     if (!workoutId) {
-                        let dialog = new CreateWorkoutDialog(this.m_workoutTemplates);
-                        dialog.closed.add(this, (sender, e) => {
-                            if (dialog.dialogResult)
-                                this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 21, 8));
-                        });
-                        Program.instance.showDialog(dialog);
-                        ko.applyBindings(this);
+                        //this._showCreateWorkoutPage(new Date().toDateString());
                     }
                     else {
-                        this.m_dataProvider.loadWorkout(workoutId, workout => {
-                            this.workout = ko.observable(workout);
-                            if (workout.status() === Data.WorkoutStatus.Running)
-                                workout.pause();
+                        MobileCRM.UI.EntityForm.requestObject(entityForm => {
+                            if (entityForm.entity.isNew) {
+                                this._showCreateWorkoutPage(entityForm.entity.properties.scheduledstart);
+                            }
+                            else {
+                                this.dataProvider.loadWorkout(workoutId, workout => {
+                                    this.workout = ko.observable(workout);
+                                    if (workout.status() === Data.WorkoutStatus.Running)
+                                        workout.pause();
 
-                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
-                                entityForm.form.caption = this.workout().name;
-                                entityForm.isDirty = true;
-                            }, function (err) {
-                                MobileCRM.bridge.alert("Unable to set dirty flag");
-                                }, this);
+                                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                        entityForm.isDirty = true;
+                                        entityForm.form.caption = workout.name;
+                                    }, function (err) {
+                                        MobileCRM.bridge.alert("Unable to set caption. " + err);
+                                    }, this);
 
-                            MobileCRM.UI.EntityForm.onSave(form => {
-                                var suspendHandler = form.suspendSave();
-                                this.m_dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
-                            }, true, this);
+                                    MobileCRM.UI.EntityForm.onSave(form => {
+                                        var suspendHandler = form.suspendSave();
+                                        this.dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
+                                    }, true, this);
+                                    ko.applyBindings(this);
+                                });
+                            }
+                        }, function (err) {
+                            MobileCRM.bridge.alert(err);
+                        }, this);
 
-                            ko.applyBindings(this);
-                        });
                     }
-
                 });
             }
+        }
+
+        private _showCreateWorkoutPage(date: string): void {
+            let dialog = new CreateWorkoutDialog(this.m_workoutTemplates, date);
+            dialog.closed.add(this, (sender, e) => {
+                if (dialog.dialogResult) {
+                    var newDate = new Date(dialog.date());
+                    newDate.setHours(8);
+                    this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, newDate, () => {
+                        MobileCRM.UI.EntityForm.closeWithoutSaving();
+                    });
+                }
+                else {
+                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                }
+            });
+            Program.instance.showDialog(dialog);
+            ko.applyBindings(this);
+
         }
 
         public clearTimer(timer: GlobalTimer): boolean {
@@ -409,16 +433,27 @@
         public selectedTemplate: KnockoutObservable<Data.WorkoutTemplate>;
         public date: KnockoutObservable<string>;
 
-        constructor(workoutTemplates: Data.WorkoutTemplate[]) {
+        public selectWorkout: Resco.Controls.SelectBox<Data.WorkoutTemplate>;
+
+        constructor(workoutTemplates: Data.WorkoutTemplate[], initDate: string) {
             super();
 
-            this.name("Add Creaet Workout");
+            this.name("Schedule Workout");
             this.uiContentTemplateName("tmplCreateWorkoutDialog");
 
             this.workoutTemplates = workoutTemplates;
             this.selectedTemplate = ko.observable<Data.WorkoutTemplate>(this.workoutTemplates && this.workoutTemplates.length > 0 ? this.workoutTemplates[0] : undefined);
 
-            this.date = ko.observable<string>("Today");
+            this.selectWorkout = new Resco.Controls.SelectBox<Data.WorkoutTemplate>();
+            this.selectWorkout.itemLabel("name")
+            this.selectWorkout.items(workoutTemplates);
+            this.selectWorkout.selecteItemChanged.add(this, this._selectWorkoutItemChanged);
+
+            this.date = ko.observable<string>(initDate);
+        }
+
+        private _selectWorkoutItemChanged(sender: any, args: Resco.Controls.SelectBoxItemChangedArgs<Data.WorkoutTemplate>): void {
+            this.selectedTemplate(args.item);
         }
     }
 

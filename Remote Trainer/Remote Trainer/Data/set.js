@@ -301,6 +301,8 @@ var RemoteTrainer;
                     if (dialog.dialogResult) {
                         var serie = new Data.Serie();
                         serie.exercise = dialog.selectedExercise();
+                        serie.amount = 0;
+                        serie.reps = 0;
                         _this.addSerie(serie);
                     }
                 });
@@ -327,14 +329,30 @@ var RemoteTrainer;
                 var _this = _super.call(this) || this;
                 _this.name("Add Serie");
                 _this.uiContentTemplateName("tmplAddSerieDialog");
+                _this.selectBoxCategory = new Resco.Controls.SelectBox();
+                _this.selectBoxCategory.items(categories);
+                _this.selectBoxCategory.itemLabel("name");
+                _this.selectBoxCategory.selectText("Please select a category...");
+                _this.selectBoxCategory.selecteItemChanged.add(_this, function (sender, args) {
+                    _this.selectedCategory(args.item);
+                    if (args.item)
+                        _this.selectBoxExercise.items(_this.m_exercises.filter(function (exc) { return exc.category === args.item; }));
+                    else
+                        _this.selectBoxExercise.items([]);
+                    _this.selectBoxExercise.selectedItem(null);
+                    _this.selectBoxExercise.isExpanded(false);
+                    _this.selectedExercise(null);
+                });
+                _this.selectBoxExercise = new Resco.Controls.SelectBox();
+                _this.selectBoxExercise.itemLabel("name");
+                _this.selectBoxExercise.selectText("Please select an exercise...");
+                _this.selectBoxExercise.selecteItemChanged.add(_this, function (sender, args) {
+                    _this.selectedExercise(args.item);
+                });
                 _this.categories = categories;
                 _this.m_exercises = exercises;
-                _this.selectedCategory = ko.observable(_this.categories && _this.categories.length > 0 ? _this.categories[0] : undefined);
-                _this.exercises = ko.computed(function () {
-                    var cat = _this.selectedCategory();
-                    return _this.m_exercises.filter(function (exc) { return exc.category === cat; });
-                }, _this);
-                _this.selectedExercise = ko.observable(_this.exercises() && _this.exercises().length > 0 ? _this.exercises()[0] : undefined);
+                _this.selectedCategory = ko.observable();
+                _this.selectedExercise = ko.observable();
                 return _this;
             }
             return AddSerieDialog;

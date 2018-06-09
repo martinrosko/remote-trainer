@@ -15,12 +15,15 @@
 
     <title>Remote Trainer</title>
 
+    <link rel="stylesheet" href="Libraries/jquery-ui.min.css" type="text/css" />
     <link rel="stylesheet" href="app.css" type="text/css" />
 
     <script src="Common/exception.js"></script>
     <script src="Common/event.js"></script>
     <script src="Common/common.js"></script>
+    <script src="Controls/selectBox.js"></script>
     <script src="Libraries/jquery-1.7.1.min.js"></script>
+    <script src="Libraries/jquery-ui.min.js"></script>
     <script src="Libraries/knockout-3.4.2.js"></script>
     <script src="Libraries/moment-2.19.1.min.js"></script>
     <script src="Libraries/JSBridge.js"></script>
@@ -170,7 +173,7 @@
 
     <script id="tmplSerie" type="text/html">
         <div class="serieHeader" data-bind="style: { backgroundColor: exercise.category.colorDark }" style="border: solid 1px black; border-bottom: 0px">
-            <div data-bind="text: exercise.name" style="padding: 5px; font-weight: bold"></div>
+            <div data-bind="text: exercise.name, click: showExerciseHistory" style="padding: 5px; font-weight: bold; cursor: pointer"></div>
         </div>
         <div class="serie" style="border: solid 1px black; border-top: dashed 1px black">
             <div class="optionPanel" data-bind="visible: uiOptionsPanelState() === RemoteTrainer.Data.OptionPanelState.Opened">
@@ -225,6 +228,12 @@
         </div>
     </script>
 
+    <script id="tmplOptionsQueuedSerie" type="text/html">
+        <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
+            Details
+        </div>
+    </script>
+
     <script id="tmplOptionsRunningSerie" type="text/html">
         <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
             <!-- ko if: uiCountDown() -->
@@ -243,12 +252,6 @@
             <div class="difficultyButton"><input type="radio" value="Medium" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Medium</div>
             <div class="difficultyButton"><input type="radio" value="Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Hard</div>
             <div class="difficultyButton"><input type="radio" value="Very Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Very Hard</div>           
-        </div>
-    </script>
-
-    <script id="tmplOptionsSerieSettings" type="text/html">
-        <div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black">
-            Nastavenia pre konkretnu serie: vynechat, zamenit, posunut na neskor...
         </div>
     </script>
 
@@ -358,7 +361,7 @@
 
     <script id="tmplDialog" type="text/html">
         <div class="tabControl">
-            <div class="tabItem"><h2>Dialog Name</h2></div>
+            <div class="tabItem"><h2 data-bind="text: name"></h2></div>
         </div>
         <div class="content">
             <div style="background-image: url('Images/background.jpg'); background-repeat:no-repeat; background-size:cover; background-position: center; background-attachment: fixed; padding: 0px; height: 100%; overflow: auto">
@@ -419,14 +422,84 @@
     </script>
 
     <script id="tmplAddSerieDialog" type="text/html">
-        <select data-bind="options: categories, optionsText: 'name', value: selectedCategory" /><br />
-        <select data-bind="options: exercises, optionsText: 'name', value: selectedExercise" />
+        <div style="padding: 10px">
+            <!-- ko template: { name: 'tmplSelectBox', data: selectBoxCategory} --><!-- /ko -->
+            <!-- ko if: selectedCategory() -->
+            <br />
+            <!-- ko template: { name: 'tmplSelectBox', data: selectBoxExercise } --><!-- /ko -->
+            <!-- /ko -->
+        </div>
     </script>
    
     <script id="tmplCreateWorkoutDialog" type="text/html">
-        <select data-bind="options: workoutTemplates, optionsText: 'name', value: selectedTemplate" />
-        <br />
-        <input type="text" data-bind="value: date" />
+        <div style="padding: 10px">
+            <!-- ko template: { name: 'tmplSelectBox', data: selectWorkout } --><!-- /ko -->
+            <br />
+            <br />
+            <div data-bind="datepicker: date" style="width: 100%"></div>
+        </div>
+    </script>
+
+    <script id="tmplExerciseHistoryDialog" type="text/html">
+        <div style="padding: 10px">
+            <!-- ko foreach: items -->
+                <!-- ko if: type === RemoteTrainer.Data.HistoryItemType.Date -->
+                <br />
+                <div class="serieHeader" data-bind="style: { backgroundColor: exercise.category.colorDark }" style="border: solid 1px black">
+                    <div style="padding: 5px; font-weight: bold" data-bind="text: dateLabel">Pondelok 19.2.2018</div>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: type === RemoteTrainer.Data.HistoryItemType.Serie -->
+                <div class="exerciseHistory" style="display: flex; flex-direction: row; background: white; height: 25px; border: solid 1px black; border-top: 0px">
+                    <div class="cell" style="border-right: dashed 1px black; flex: 1 1 100%; position: relative">
+                        <div style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; background: linear-gradient(to right, white, #aa0000)"></div>
+                        <div style="position: absolute; right: 0px; top: 0px; height: 100%; width: 20%; background: white" data-bind="style: { width: (100 - (serie.difficulty() * 20)) + '%' }"></div>
+                        <span style="position: absolute; left: 0px; top: 0px; height: 100%; width: 100%; text-align: left; padding: 5px" data-bind="text: serie.uiDuration"></span>
+                    </div>
+                    <div class="cell button" style="border-right: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight }">
+                        <span data-bind="text: serie.uiAmount"/><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
+                    </div>
+                    <div class="cell button" data-bind="style: { backgroundColor: exercise.category.colorLight }">
+                        <span data-bind="text: serie.uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
+                    </div>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: type === RemoteTrainer.Data.HistoryItemType.Break -->
+                <div class="exerciseHistory" style="display: flex; flex-direction: row; background: white; height: 25px; border: solid 1px black; border-top: 0px">
+                    <div class="cell" style="flex: 1 1 auto; text-align: center" data-bind="text: durationLabel" />
+                </div>
+                <!-- /ko -->
+            <!-- /ko -->
+        </div>
+    </script>
+
+    <script id="tmplSelectBox" type="text/html">
+        <!-- ko if: !isExpanded() -->
+        <div class="selectbox" style="padding: 10px; background: white; border: solid 1px black; cursor: pointer; box-shadow: 5px 5px 1px rgba(0,0,0,0.55)" data-bind="click: expand">
+            <!-- ko if: selectedItem() -->
+            <span data-bind="text: itemLabel() ? selectedItem()[itemLabel()] : selectedItem()" style="font-weight: bold; font-style: normal" />
+            <!-- /ko -->
+            <!-- ko if: !selectedItem() -->
+            <span data-bind="text: selectText()" />
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <!-- ko if: isExpanded() -->
+        <div class="selectbox expanded" style="background: white; border: solid 1px black; max-height: 200px; overflow-y: auto; box-shadow: 5px 5px 1px rgba(0,0,0,0.55)">
+            <!-- ko if: items().length > 0 -->
+                <!-- ko foreach: items() -->
+                <div class="item" style="padding: 10px; background: white; border-bottom: solid 1px black; cursor: pointer" data-bind="click: $parent.itemSelected.bind($parent, $data, $index())">
+                    <span data-bind="text: $parent.itemLabel() ? $data[$parent.itemLabel()] : $data" style="font-weight: bold; font-style: normal" />
+                </div>
+                <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: items().length === 0 -->
+            <div class="item" style="padding: 10px; background: white; border-bottom: solid 1px black; cursor: pointer" data-bind="click: collapse">
+                <span style="font-weight: bold; font-style: normal">Empty</span>
+            </div>
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
     </script>
 </body>
 </html>

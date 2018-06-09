@@ -10,7 +10,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 var RemoteTrainer;
 (function (RemoteTrainer) {
-    RemoteTrainer.DEMODATA = true;
+    RemoteTrainer.DEMODATA = false;
     var GlobalTimer = (function () {
         function GlobalTimer() {
         }
@@ -45,50 +45,74 @@ var RemoteTrainer;
             if (RemoteTrainer.DEMODATA) {
                 this._createDemoData();
                 this.workout = ko.observable(new RemoteTrainer.Data.Workout(this.m_workoutTemplate));
-                //let dialog = new CreateWorkoutDialog([this.m_workoutTemplate]);
-                //dialog.closed.add(this, (sender, e) => {
-                //    if (dialog.dialogResult) {
-                //        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
-                //    }
-                //});
+                var dialog_1 = new CreateWorkoutDialog([this.m_workoutTemplate, this.m_workoutTemplate, this.m_workoutTemplate], new Date().toString());
+                dialog_1.closed.add(this, function (sender, e) {
+                    if (dialog_1.dialogResult) {
+                        var newDate = new Date(dialog_1.date());
+                        newDate.setHours(8);
+                        alert(dialog_1.date());
+                        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
+                    }
+                });
                 //Program.instance.showDialog(dialog);
                 ko.applyBindings(this);
             }
             else {
-                this.m_dataProvider = new RemoteTrainer.Service.JSBridgeProvider();
-                this.m_dataProvider.initialize(function (categories, exercises, workouts) {
+                this.dataProvider = new RemoteTrainer.Service.JSBridgeProvider();
+                this.dataProvider.initialize(function (categories, exercises, workouts) {
                     _this.categories = categories;
                     _this.exercises = exercises;
                     _this.m_workoutTemplates = workouts;
                     if (!workoutId) {
-                        var dialog_1 = new CreateWorkoutDialog(_this.m_workoutTemplates);
-                        dialog_1.closed.add(_this, function (sender, e) {
-                            if (dialog_1.dialogResult)
-                                _this.m_dataProvider.instantiateWorkout(dialog_1.selectedTemplate(), dialog_1.selectedTemplate().name, new Date(2018, 1, 21, 8));
-                        });
-                        Program.instance.showDialog(dialog_1);
-                        ko.applyBindings(_this);
+                        //this._showCreateWorkoutPage(new Date().toDateString());
                     }
                     else {
-                        _this.m_dataProvider.loadWorkout(workoutId, function (workout) {
-                            _this.workout = ko.observable(workout);
-                            if (workout.status() === RemoteTrainer.Data.WorkoutStatus.Running)
-                                workout.pause();
-                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
-                                entityForm.form.caption = this.workout().name;
-                                entityForm.isDirty = true;
-                            }, function (err) {
-                                MobileCRM.bridge.alert("Unable to set dirty flag");
-                            }, _this);
-                            MobileCRM.UI.EntityForm.onSave(function (form) {
-                                var suspendHandler = form.suspendSave();
-                                _this.m_dataProvider.saveWorkout(_this.workout(), function (error) { return suspendHandler.resumeSave(error); });
-                            }, true, _this);
-                            ko.applyBindings(_this);
-                        });
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            if (entityForm.entity.isNew) {
+                                _this._showCreateWorkoutPage(entityForm.entity.properties.scheduledstart);
+                            }
+                            else {
+                                _this.dataProvider.loadWorkout(workoutId, function (workout) {
+                                    _this.workout = ko.observable(workout);
+                                    if (workout.status() === RemoteTrainer.Data.WorkoutStatus.Running)
+                                        workout.pause();
+                                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                        entityForm.isDirty = true;
+                                        entityForm.form.caption = workout.name;
+                                    }, function (err) {
+                                        MobileCRM.bridge.alert("Unable to set caption. " + err);
+                                    }, _this);
+                                    MobileCRM.UI.EntityForm.onSave(function (form) {
+                                        var suspendHandler = form.suspendSave();
+                                        _this.dataProvider.saveWorkout(_this.workout(), function (error) { return suspendHandler.resumeSave(error); });
+                                    }, true, _this);
+                                    ko.applyBindings(_this);
+                                });
+                            }
+                        }, function (err) {
+                            MobileCRM.bridge.alert(err);
+                        }, _this);
                     }
                 });
             }
+        };
+        Program.prototype._showCreateWorkoutPage = function (date) {
+            var _this = this;
+            var dialog = new CreateWorkoutDialog(this.m_workoutTemplates, date);
+            dialog.closed.add(this, function (sender, e) {
+                if (dialog.dialogResult) {
+                    var newDate = new Date(dialog.date());
+                    newDate.setHours(8);
+                    _this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, newDate, function () {
+                        MobileCRM.UI.EntityForm.closeWithoutSaving();
+                    });
+                }
+                else {
+                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                }
+            });
+            Program.instance.showDialog(dialog);
+            ko.applyBindings(this);
         };
         Program.prototype.clearTimer = function (timer) {
             var timerIndex = Program.instance.GlobalTimer.indexOf(timer);
@@ -359,15 +383,22 @@ var RemoteTrainer;
     RemoteTrainer.Dialog = Dialog;
     var CreateWorkoutDialog = (function (_super) {
         __extends(CreateWorkoutDialog, _super);
-        function CreateWorkoutDialog(workoutTemplates) {
+        function CreateWorkoutDialog(workoutTemplates, initDate) {
             var _this = _super.call(this) || this;
-            _this.name("Add Creaet Workout");
+            _this.name("Schedule Workout");
             _this.uiContentTemplateName("tmplCreateWorkoutDialog");
             _this.workoutTemplates = workoutTemplates;
             _this.selectedTemplate = ko.observable(_this.workoutTemplates && _this.workoutTemplates.length > 0 ? _this.workoutTemplates[0] : undefined);
-            _this.date = ko.observable("Today");
+            _this.selectWorkout = new Resco.Controls.SelectBox();
+            _this.selectWorkout.itemLabel("name");
+            _this.selectWorkout.items(workoutTemplates);
+            _this.selectWorkout.selecteItemChanged.add(_this, _this._selectWorkoutItemChanged);
+            _this.date = ko.observable(initDate);
             return _this;
         }
+        CreateWorkoutDialog.prototype._selectWorkoutItemChanged = function (sender, args) {
+            this.selectedTemplate(args.item);
+        };
         return CreateWorkoutDialog;
     }(Dialog));
     RemoteTrainer.CreateWorkoutDialog = CreateWorkoutDialog;

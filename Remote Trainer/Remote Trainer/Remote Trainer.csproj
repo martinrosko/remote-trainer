@@ -86,7 +86,15 @@
     <Content Include="Images\serieStatusRunning.png" />
     <Content Include="Images\setup.png" />
     <Content Include="index.html" />
+    <Content Include="Libraries\images\ui-icons_444444_256x240.png" />
+    <Content Include="Libraries\images\ui-icons_555555_256x240.png" />
+    <Content Include="Libraries\images\ui-icons_777620_256x240.png" />
+    <Content Include="Libraries\images\ui-icons_777777_256x240.png" />
+    <Content Include="Libraries\images\ui-icons_cc0000_256x240.png" />
+    <Content Include="Libraries\images\ui-icons_ffffff_256x240.png" />
     <Content Include="Libraries\jquery-1.7.1.min.js" />
+    <Content Include="Libraries\jquery-ui.min.css" />
+    <Content Include="Libraries\jquery-ui.min.js" />
     <Content Include="Libraries\JSBridge.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
     <Content Include="Libraries\moment-2.19.1.min.js" />
@@ -98,6 +106,7 @@
     <TypeScriptCompile Include="Common\common.ts" />
     <TypeScriptCompile Include="Common\event.ts" />
     <TypeScriptCompile Include="Common\exception.ts" />
+    <TypeScriptCompile Include="Controls\selectBox.ts" />
     <TypeScriptCompile Include="Data\category.ts" />
     <TypeScriptCompile Include="Data\exercise.ts" />
     <TypeScriptCompile Include="Data\set.ts" />
@@ -106,6 +115,7 @@
     <TypeScriptCompile Include="Libraries\jquery.d.ts" />
     <TypeScriptCompile Include="Libraries\JSBridge.d.ts" />
     <TypeScriptCompile Include="Libraries\knockout.d.ts" />
+    <TypeScriptCompile Include="Libraries\jquery.ui.d.ts" />
     <TypeScriptCompile Include="Libraries\moment.d.ts" />
     <TypeScriptCompile Include="Service\IDataProvider.ts" />
     <TypeScriptCompile Include="Service\JSBridgeProvider.ts" />

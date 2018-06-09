@@ -113,7 +113,7 @@ var RemoteTrainer;
                 }, _this);
                 _this.uiStartedOn = ko.observable();
                 _this.uiFinishedOn = ko.observable();
-                _this.uiOptionsContentTemplate = ko.observable("tmplOptionsSerieSettings");
+                _this.uiOptionsContentTemplate = ko.observable("tmplOptionsQueuedSerie");
                 _this.uiOptionsPanelState = ko.observable();
                 _this.duration = ko.observable(0);
                 _this.uiDuration = ko.computed(function () {
@@ -147,6 +147,72 @@ var RemoteTrainer;
             };
             Serie.prototype._onBreakTick = function (context) {
                 this.break(this.break() + 1);
+            };
+            Serie.prototype.showExerciseHistory = function () {
+                var _this = this;
+                RemoteTrainer.Program.instance.dataProvider.getExerciseSeries(this.exercise, function (series) { return RemoteTrainer.Program.instance.showDialog(new ExerciseHistoryDialog(_this.exercise, series)); });
+                //var series: Serie[] = [];
+                //var serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(10);
+                //serie.uiStartedOn(new Date(2018, 1, 1, 10, 0, 0));
+                //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 1, 0));
+                //serie.duration(60);
+                //serie.uiDifficulty(Serie.difficulties[3]);
+                //serie.order(1);
+                //serie.parentid = "1";
+                //series.push(serie);
+                //serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(10);
+                //serie.uiStartedOn(new Date(2018, 1, 1, 10, 2, 30));
+                //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 3, 40));
+                //serie.duration(70);
+                //serie.uiDifficulty(Serie.difficulties[3]);
+                //serie.order(2);
+                //serie.parentid = "1";
+                //series.push(serie);
+                //serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(8);
+                //serie.uiStartedOn(new Date(2018, 1, 1, 10, 5, 0));
+                //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 6, 20));
+                //serie.duration(80);
+                //serie.uiDifficulty(Serie.difficulties[4]);
+                //serie.order(3);
+                //serie.parentid = "1";
+                //series.push(serie);
+                //serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(10);
+                //serie.uiStartedOn(new Date(2018, 1, 8, 10, 0, 0));
+                //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 1, 0));
+                //serie.duration(60);
+                //serie.uiDifficulty(Serie.difficulties[3]);
+                //serie.order(1);
+                //serie.parentid = "2";
+                //series.push(serie);
+                //serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(10);
+                //serie.uiStartedOn(new Date(2018, 1, 8, 10, 2, 30));
+                //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 3, 40));
+                //serie.duration(70);
+                //serie.uiDifficulty(Serie.difficulties[3]);
+                //serie.order(2);
+                //serie.parentid = "2";
+                //series.push(serie);
+                //serie = new Serie();
+                //serie.uiAmount(50);
+                //serie.uiReps(9);
+                //serie.uiStartedOn(new Date(2018, 1, 8, 10, 5, 0));
+                //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 6, 20));
+                //serie.duration(80);
+                //serie.uiDifficulty(Serie.difficulties[3]);
+                //serie.order(3);
+                //serie.parentid = "2";
+                //series.push(serie);
+                //Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series))
             };
             Serie.prototype.onStatusClicked = function () {
                 var status = this.status();
@@ -295,9 +361,9 @@ var RemoteTrainer;
                 return result;
             };
             Serie.prototype.addClone = function () {
-                var cloneTemplate = new SerieTemplate();
-                this.copyTo(cloneTemplate);
-                this.parent.addSerie(new Serie(cloneTemplate));
+                var clone = new Serie();
+                this.copyTo(clone);
+                this.parent.addSerie(clone);
             };
             Serie.prototype._toggleOptionsPanel = function () {
                 this.uiOptionsPanelState(this.uiOptionsPanelState() === OptionPanelState.Closed ? OptionPanelState.Opened : OptionPanelState.Closed);
@@ -325,6 +391,79 @@ var RemoteTrainer;
             return Serie;
         }(SerieTemplate));
         Data.Serie = Serie;
+        var ExerciseHistoryDialog = (function (_super) {
+            __extends(ExerciseHistoryDialog, _super);
+            function ExerciseHistoryDialog(exercise, series) {
+                var _this = _super.call(this) || this;
+                _this.name(exercise.name);
+                _this.uiContentTemplateName("tmplExerciseHistoryDialog");
+                series = series.sort(function (a, b) { return b.uiFinishedOn().getTime() - a.uiFinishedOn().getTime(); });
+                _this.items = [];
+                var parentId = "";
+                var prevSerie;
+                while (series.length > 0) {
+                    var item;
+                    var serie = series.pop();
+                    if (parentId !== serie.parentid) {
+                        // new set, new day => create date separator
+                        _this.items.push(new DateHistoryItem(exercise, serie.uiFinishedOn()));
+                        parentId = serie.parentid;
+                        prevSerie = null;
+                    }
+                    // if not first serie of a set, add break item
+                    if (prevSerie)
+                        _this.items.push(new BreakHistoryItem(exercise, Math.round((serie.uiStartedOn().getTime() - prevSerie.uiFinishedOn().getTime()) / 1000)));
+                    // add serie item
+                    _this.items.push(new SerieHistoryItem(exercise, serie));
+                    prevSerie = serie;
+                }
+                return _this;
+            }
+            return ExerciseHistoryDialog;
+        }(RemoteTrainer.Dialog));
+        Data.ExerciseHistoryDialog = ExerciseHistoryDialog;
+        var HistoryItemType;
+        (function (HistoryItemType) {
+            HistoryItemType[HistoryItemType["Date"] = 0] = "Date";
+            HistoryItemType[HistoryItemType["Serie"] = 1] = "Serie";
+            HistoryItemType[HistoryItemType["Break"] = 2] = "Break";
+        })(HistoryItemType = Data.HistoryItemType || (Data.HistoryItemType = {}));
+        var ExerciseHistoryItem = (function () {
+            function ExerciseHistoryItem(exercise) {
+                this.exercise = exercise;
+            }
+            return ExerciseHistoryItem;
+        }());
+        var SerieHistoryItem = (function (_super) {
+            __extends(SerieHistoryItem, _super);
+            function SerieHistoryItem(exercise, serie) {
+                var _this = _super.call(this, exercise) || this;
+                _this.type = HistoryItemType.Serie;
+                _this.serie = serie;
+                return _this;
+            }
+            return SerieHistoryItem;
+        }(ExerciseHistoryItem));
+        var BreakHistoryItem = (function (_super) {
+            __extends(BreakHistoryItem, _super);
+            function BreakHistoryItem(exercise, duration) {
+                var _this = _super.call(this, exercise) || this;
+                _this.type = HistoryItemType.Break;
+                _this.durationLabel = RemoteTrainer.Program.instance.spanToTimeLabel(duration);
+                return _this;
+            }
+            return BreakHistoryItem;
+        }(ExerciseHistoryItem));
+        var DateHistoryItem = (function (_super) {
+            __extends(DateHistoryItem, _super);
+            function DateHistoryItem(exercise, date) {
+                var _this = _super.call(this, exercise) || this;
+                _this.type = HistoryItemType.Date;
+                _this.dateLabel = moment(date).format("dddd, D.M.YYYY");
+                return _this;
+            }
+            return DateHistoryItem;
+        }(ExerciseHistoryItem));
         var SerieStatus;
         (function (SerieStatus) {
             SerieStatus[SerieStatus["Queued"] = 1] = "Queued";

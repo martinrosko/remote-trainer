@@ -50,7 +50,8 @@
         public break: KnockoutObservable<number>;
         public uiBreakLabel: KnockoutComputed<string>;
         public exercise: Exercise;
-		public parent: Set;
+        public parent: Set;
+        public parentid: string;
         public next: KnockoutObservable<Serie>;
         public previous: KnockoutObservable<Serie>;
         public countDownTimer: KnockoutObservable<GlobalTimer>;
@@ -64,7 +65,7 @@
                 template.copyTo(this);
 
             this.uiAmount = ko.observable<number>(template ? template.amount : 0);
- 
+
             this.uiAmountHasFocus = ko.observable<boolean>(false);
             this.uiAmountHasFocus.subscribe(hasFocus => {
                 // FIXME: validate value
@@ -128,7 +129,7 @@
                     case SerieStatus.Ready:
                         Program.instance.GlobalTimer.push(this.m_breakTimer);
                         break;
-                     
+
                     case SerieStatus.Queued: {
                         Program.instance.clearTimer(this.m_breakTimer);
                         this.break(0);
@@ -147,13 +148,13 @@
                     return "url(\'Images/serieStatusRunning.png\')";
                 else if (status === SerieStatus.Finished)
                     return "url(\'Images/serieStatusFinished.png\')";
-                
+
                 return "url(\'Images/serieStatusReady.png\')";
             }, this);
 
             this.uiStartedOn = ko.observable<Date>();
             this.uiFinishedOn = ko.observable<Date>();
-            this.uiOptionsContentTemplate = ko.observable<string>("tmplOptionsSerieSettings");
+            this.uiOptionsContentTemplate = ko.observable<string>("tmplOptionsQueuedSerie");
             this.uiOptionsPanelState = ko.observable<OptionPanelState>();
 
             this.duration = ko.observable<number>(0);
@@ -197,6 +198,85 @@
 
         private _onBreakTick(context: any): void {
             this.break(this.break() + 1);
+        }
+
+        public showExerciseHistory(): void {
+            Program.instance.dataProvider.getExerciseSeries(this.exercise, series => Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series)));
+
+            //var series: Serie[] = [];
+            //var serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(10);
+            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 0, 0));
+            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 1, 0));
+            //serie.duration(60);
+            //serie.uiDifficulty(Serie.difficulties[3]);
+            //serie.order(1);
+            //serie.parentid = "1";
+
+            //series.push(serie);
+
+            //serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(10);
+            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 2, 30));
+            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 3, 40));
+            //serie.duration(70);
+            //serie.uiDifficulty(Serie.difficulties[3]);
+            //serie.order(2);
+            //serie.parentid = "1";
+
+            //series.push(serie);
+
+            //serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(8);
+            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 5, 0));
+            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 6, 20));
+            //serie.duration(80);
+            //serie.uiDifficulty(Serie.difficulties[4]);
+            //serie.order(3);
+            //serie.parentid = "1";
+
+            //series.push(serie);
+
+            //serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(10);
+            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 0, 0));
+            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 1, 0));
+            //serie.duration(60);
+            //serie.uiDifficulty(Serie.difficulties[3]);
+            //serie.order(1);
+            //serie.parentid = "2";
+
+            //series.push(serie);
+
+            //serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(10);
+            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 2, 30));
+            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 3, 40));
+            //serie.duration(70);
+            //serie.uiDifficulty(Serie.difficulties[3]);
+            //serie.order(2);
+            //serie.parentid = "2";
+
+            //series.push(serie);
+
+            //serie = new Serie();
+            //serie.uiAmount(50);
+            //serie.uiReps(9);
+            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 5, 0));
+            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 6, 20));
+            //serie.duration(80);
+            //serie.uiDifficulty(Serie.difficulties[3]);
+            //serie.order(3);
+            //serie.parentid = "2";
+
+            //series.push(serie);
+
+            //Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series))
         }
 
         public onStatusClicked(): void {
@@ -369,9 +449,9 @@
         }
 
         public addClone(): void {
-            var cloneTemplate = new SerieTemplate();
-            this.copyTo(cloneTemplate);
-            this.parent.addSerie(new Serie(cloneTemplate));
+            var clone = new Serie();
+            this.copyTo(clone);
+            this.parent.addSerie(clone);
         }
 
         private _toggleOptionsPanel(): void {
@@ -402,6 +482,88 @@
 
         private m_durationTimer: GlobalTimer;
         private m_breakTimer: GlobalTimer;
+    }
+
+    export class ExerciseHistoryDialog extends Dialog {
+        public items: ExerciseHistoryItem[];
+
+        constructor(exercise: Exercise, series: Serie[]) {
+            super();
+
+            this.name(exercise.name);
+            this.uiContentTemplateName("tmplExerciseHistoryDialog");
+
+            series = series.sort((a, b) => b.uiFinishedOn().getTime() - a.uiFinishedOn().getTime());
+
+            this.items = [];
+            
+            var parentId = "";
+            var prevSerie: Serie;
+            while (series.length > 0) {
+                var item: ExerciseHistoryItem;
+                var serie = series.pop();
+
+                if (parentId !== serie.parentid) {
+                    // new set, new day => create date separator
+                    this.items.push(new DateHistoryItem(exercise, serie.uiFinishedOn()));
+                    parentId = serie.parentid;
+                    prevSerie = null;
+                }
+
+                // if not first serie of a set, add break item
+                if (prevSerie)
+                    this.items.push(new BreakHistoryItem(exercise, Math.round((serie.uiStartedOn().getTime() - prevSerie.uiFinishedOn().getTime()) / 1000)));
+
+                // add serie item
+                this.items.push(new SerieHistoryItem(exercise, serie));
+                prevSerie = serie;
+            }
+        }
+    }
+
+    export enum HistoryItemType {
+        Date,
+        Serie,
+        Break
+    }
+
+    class ExerciseHistoryItem {
+        public type: HistoryItemType;
+        public exercise: Exercise;
+
+        constructor(exercise: Exercise) {
+            this.exercise = exercise;
+        }
+    }
+
+    class SerieHistoryItem extends ExerciseHistoryItem {
+        public serie: Serie;
+
+        constructor(exercise: Exercise, serie: Serie) {
+            super(exercise);
+            this.type = HistoryItemType.Serie;
+            this.serie = serie;
+        }
+    }
+
+    class BreakHistoryItem extends ExerciseHistoryItem {
+        public durationLabel: string;
+
+        constructor(exercise: Exercise, duration: number) {
+            super(exercise);
+            this.type = HistoryItemType.Break;
+            this.durationLabel = Program.instance.spanToTimeLabel(duration);
+        }
+    }
+
+    class DateHistoryItem extends ExerciseHistoryItem {
+        public dateLabel: string;
+
+        constructor(exercise: Exercise, date: Date) {
+            super(exercise);
+            this.type = HistoryItemType.Date;
+            this.dateLabel = moment(date).format("dddd, D.M.YYYY");
+        }
     }
 
     export enum SerieStatus {
