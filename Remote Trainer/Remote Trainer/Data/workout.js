@@ -12,7 +12,7 @@ var RemoteTrainer;
 (function (RemoteTrainer) {
     var Data;
     (function (Data) {
-        var WorkoutTemplate = (function () {
+        var WorkoutTemplate = /** @class */ (function () {
             function WorkoutTemplate() {
                 this.setTemplates = [];
             }
@@ -28,7 +28,7 @@ var RemoteTrainer;
             return WorkoutTemplate;
         }());
         Data.WorkoutTemplate = WorkoutTemplate;
-        var Workout = (function (_super) {
+        var Workout = /** @class */ (function (_super) {
             __extends(Workout, _super);
             function Workout(template) {
                 var _this = _super.call(this) || this;
@@ -70,6 +70,18 @@ var RemoteTrainer;
                         });
                     });
                     return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
+                }, _this);
+                _this.estimatedEnd = ko.computed(function () {
+                    var estDuration = 0;
+                    _this.sets().forEach(function (set) {
+                        if (set.status() !== Data.SetStatus.Finished) {
+                            set.series().forEach(function (serie) {
+                                if (serie.status() === Data.SerieStatus.Ready || serie.status() === Data.SerieStatus.Queued)
+                                    estDuration += serie.exercise.averageDurationPerRep + 75; // 75 seconds is estimated length of average break
+                            }, _this);
+                        }
+                    }, _this);
+                    return new Date(Date.now() + (estDuration * 1000));
                 }, _this);
                 _this.displayedSet = ko.observable();
                 return _this;

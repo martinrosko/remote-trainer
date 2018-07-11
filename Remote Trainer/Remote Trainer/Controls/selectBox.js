@@ -12,7 +12,7 @@ var Resco;
 (function (Resco) {
     var Controls;
     (function (Controls) {
-        var SelectBox = (function () {
+        var SelectBox = /** @class */ (function () {
             function SelectBox() {
                 this.items = ko.observableArray();
                 this.itemLabel = ko.observable();
@@ -36,7 +36,7 @@ var Resco;
             return SelectBox;
         }());
         Controls.SelectBox = SelectBox;
-        var SelectBoxItemChangedArgs = (function (_super) {
+        var SelectBoxItemChangedArgs = /** @class */ (function (_super) {
             __extends(SelectBoxItemChangedArgs, _super);
             function SelectBoxItemChangedArgs(item, index) {
                 var _this = _super.call(this) || this;

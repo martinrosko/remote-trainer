@@ -2,9 +2,13 @@ var RemoteTrainer;
 (function (RemoteTrainer) {
     var Service;
     (function (Service) {
-        var JSBridgeProvider = (function () {
-            function JSBridgeProvider() {
+        var JSBridgeProvider = /** @class */ (function () {
+            function JSBridgeProvider(service) {
+                this.m_service = service;
             }
+            JSBridgeProvider.prototype.connect = function (service) {
+                this.m_service = service;
+            };
             JSBridgeProvider.prototype.initialize = function (onLoaded) {
                 var _this = this;
                 this._loadCategories(function () { return _this._loadExercises(function () { return _this._loadTemplates(function () {
@@ -417,34 +421,6 @@ var RemoteTrainer;
             return JSBridgeProvider;
         }());
         Service.JSBridgeProvider = JSBridgeProvider;
-        var JSBridgeEntityWriter = (function () {
-            function JSBridgeEntityWriter(entity /*MobileCRM.DynamicEntity*/) {
-                this.m_jsbEntity = entity;
-                this.m_oldValues = new Resco.Dictionary();
-            }
-            JSBridgeEntityWriter.prototype.subscribeObservableForWriting = function (obsVar, fieldName) {
-                var _this = this;
-                obsVar.subscribe(function (oldValue) {
-                    _this.m_oldValues.set(fieldName, oldValue);
-                }, this, "beforeChange");
-                obsVar.subscribe(function (value) {
-                    if (!_this.m_storageLock) {
-                        _this.m_jsbEntity.properties[fieldName] = value;
-                        _this.m_jsbEntity.save(function (err) {
-                            if (err) {
-                                var oldLockValue = _this.m_storageLock;
-                                _this.m_storageLock = true;
-                                obsVar(_this.m_oldValues.getValue(fieldName));
-                                _this.m_storageLock = oldLockValue;
-                            }
-                        });
-                    }
-                }, this);
-            };
-            JSBridgeEntityWriter.prototype.save = function () {
-            };
-            return JSBridgeEntityWriter;
-        }());
     })(Service = RemoteTrainer.Service || (RemoteTrainer.Service = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
 //# sourceMappingURL=JSBridgeProvider.js.map

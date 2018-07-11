@@ -1,5 +1,5 @@
 ﻿module RemoteTrainer {
-    export const DEMODATA = false;
+    export const DEMODATA = true;
 
     export class GlobalTimer {
         public fn: (context: any) => void;
@@ -44,67 +44,86 @@
             }, 1000, this);
         }
 
-        public runApplication(workoutId: string) {
+        public async runApplication(workoutId: string) {
             if (RemoteTrainer.DEMODATA) {
-                this._createDemoData();
-                this.workout = ko.observable<Data.Workout>(new Data.Workout(this.m_workoutTemplate));
+                var login = new Resco.Data.WebService.SimpleLoginInfo();
+                login.url = "https://rescocrm.com";
+                login.crmOrganization = "rohelbb";
+                login.userName = "rohel@resco.net";
+                login.password = "1234";
+                this.dataProvider = new Service.DataProvider(Resco.Data.WebService.Xrm.XrmService.connect(login));
 
-                let dialog = new CreateWorkoutDialog([this.m_workoutTemplate, this.m_workoutTemplate, this.m_workoutTemplate], new Date().toString());
-                dialog.closed.add(this, (sender, e) => {
-                    if (dialog.dialogResult) {
-                        var newDate = new Date(dialog.date());
-                        newDate.setHours(8);
-                        alert(dialog.date());
-                        //this.m_dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, new Date(2018, 1, 19, 8));
-                    }
-                });
-                //Program.instance.showDialog(dialog);
+                await this.dataProvider.initialize();//(categories, exercises, workouts) => {
+                //    this.categories = categories;
+                //    this.exercises = exercises;
+                //    this.m_workoutTemplates = workouts;
 
+                var workout = await this.dataProvider.loadWorkout(workoutId);
+                this.workout = ko.observable(workout);
+                if (workout.status() === Data.WorkoutStatus.Running)
+                    workout.pause();
+
+                //MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                //    entityForm.isDirty = true;
+                //    entityForm.form.caption = workout.name;
+                //}, function (err) {
+                //    MobileCRM.bridge.alert("Unable to set caption. " + err);
+                //}, this);
+
+                //MobileCRM.UI.EntityForm.onSave(form => {
+                //    var suspendHandler = form.suspendSave();
+                //    this.dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
+                //}, true, this);
                 ko.applyBindings(this);
             }
-            else {
-                this.dataProvider = new Service.JSBridgeProvider();
+            //else {
+            //    var login = new Resco.Data.WebService.SimpleLoginInfo();
+            //    login.url = "https://rescocrm.com";
+            //    login.crmOrganization = "rohelbb";
+            //    login.userName = "rohel@resco.net";
+            //    login.password = "1234";
+            //    this.dataProvider = new Service.DataProvider(Resco.Data.WebService.Xrm.XrmService.connect(login));
 
-                this.dataProvider.initialize((categories, exercises, workouts) => {
-                    this.categories = categories;
-                    this.exercises = exercises;
-                    this.m_workoutTemplates = workouts;
+            //    this.dataProvider.initialize((categories, exercises, workouts) => {
+            //        this.categories = categories;
+            //        this.exercises = exercises;
+            //        this.m_workoutTemplates = workouts;
 
-                    if (!workoutId) {
-                        //this._showCreateWorkoutPage(new Date().toDateString());
-                    }
-                    else {
-                        MobileCRM.UI.EntityForm.requestObject(entityForm => {
-                            if (entityForm.entity.isNew) {
-                                this._showCreateWorkoutPage(entityForm.entity.properties.scheduledstart);
-                            }
-                            else {
-                                this.dataProvider.loadWorkout(workoutId, workout => {
-                                    this.workout = ko.observable(workout);
-                                    if (workout.status() === Data.WorkoutStatus.Running)
-                                        workout.pause();
+            //        if (!workoutId) {
+            //            //this._showCreateWorkoutPage(new Date().toDateString());
+            //        }
+            //        else {
+            //            MobileCRM.UI.EntityForm.requestObject(entityForm => {
+            //                if (entityForm.entity.isNew) {
+            //                    this._showCreateWorkoutPage(entityForm.entity.properties.scheduledstart);
+            //                }
+            //                else {
+            //                    this.dataProvider.loadWorkout(workoutId, workout => {
+            //                        this.workout = ko.observable(workout);
+            //                        if (workout.status() === Data.WorkoutStatus.Running)
+            //                            workout.pause();
 
-                                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
-                                        entityForm.isDirty = true;
-                                        entityForm.form.caption = workout.name;
-                                    }, function (err) {
-                                        MobileCRM.bridge.alert("Unable to set caption. " + err);
-                                    }, this);
+            //                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+            //                            entityForm.isDirty = true;
+            //                            entityForm.form.caption = workout.name;
+            //                        }, function (err) {
+            //                            MobileCRM.bridge.alert("Unable to set caption. " + err);
+            //                        }, this);
 
-                                    MobileCRM.UI.EntityForm.onSave(form => {
-                                        var suspendHandler = form.suspendSave();
-                                        this.dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
-                                    }, true, this);
-                                    ko.applyBindings(this);
-                                });
-                            }
-                        }, function (err) {
-                            MobileCRM.bridge.alert(err);
-                        }, this);
+            //                        MobileCRM.UI.EntityForm.onSave(form => {
+            //                            var suspendHandler = form.suspendSave();
+            //                            this.dataProvider.saveWorkout(this.workout(), (error) => suspendHandler.resumeSave(error));
+            //                        }, true, this);
+            //                        ko.applyBindings(this);
+            //                    });
+            //                }
+            //            }, function (err) {
+            //                MobileCRM.bridge.alert(err);
+            //            }, this);
 
-                    }
-                });
-            }
+            //        }
+            //    });
+            //}
         }
 
         private _showCreateWorkoutPage(date: string): void {
@@ -160,227 +179,6 @@
                 this.dialogs.remove(dialog);
             });
             this.dialogs.push(dialog);
-        }
-
-        private _createDemoData() {
-            this.categories = [new Data.Category("Brucho", "#eeece1", "#ddd9c4"),
-                new Data.Category("Cardio", "blue", "navy"),
-                new Data.Category("Prsia", "#dce6f1", "#b8cce4"),
-                new Data.Category("Nohy", "#daeef3", "#b7dee8"),
-                new Data.Category("Ramena", "#fde9d9", "#fcd5b4"),
-				new Data.Category("Biceps", "#f2dcdb", "#e6b8b7"),
-				new Data.Category("Chrbat", "#ebf1de", "#d8e4bc"),
-				new Data.Category("Triceps", "#e4dfec", "#ccc0da")];
-
-            this.exercises = [];
-            var exercise = new Data.Exercise();
-            exercise.category = this.categories[0];
-            exercise.name = "Skracovacky";
-            exercise.uoa = Data.UnitOfAmount.kg;
-			exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[0];
-            exercise.name = "Pritahy k brade na lavicke";
-            exercise.uoa = Data.UnitOfAmount.none;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[0];
-            exercise.name = "Skracovacky na stroji";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1.5;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[0];
-            exercise.name = "Vytacanie do boku";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 2.5;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[2];
-            exercise.name = "Tlaky v sede na stroji";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 3;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[2];
-            exercise.name = "Bench sikma dole";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 3;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[3];
-            exercise.name = "Drepy v raily";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 3;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[3];
-            exercise.name = "Kracanie so zatazou";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 3;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[3];
-            exercise.name = "Predkopavanie";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[3];
-            exercise.name = "Zakopavanie";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[3];
-            exercise.name = "Lytka sikma";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 1.5;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[4];
-            exercise.name = "Upazovanie s cinkami";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 4;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[4];
-            exercise.name = "Predpazovanie s cinkami";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 4;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[4];
-            exercise.name = "Tlak na stroji";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 3;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[4];
-            exercise.name = "Trapezy";
-            exercise.uoa = Data.UnitOfAmount.kg;
-            exercise.uor = Data.UnitOfRepetitions.reps;
-			exercise.averageDurationPerRep = 2;
-            this.exercises.push(exercise);
-            exercise = new Data.Exercise();
-            exercise = new Data.Exercise();
-            exercise.category = this.categories[0];
-            exercise.name = "Plank";
-            exercise.uoa = Data.UnitOfAmount.none;
-            exercise.uor = Data.UnitOfRepetitions.sec;
-			exercise.averageDurationPerRep = 1;
-            this.exercises.push(exercise);
-
-            this.m_workoutTemplate = new Data.WorkoutTemplate();
-            this.m_workoutTemplate.name = "Chrbat / Triceps"
-            this.m_workoutTemplate.description = "Bla bla bla bla..."
-
-            var set = new Data.SetTemplate();
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 1, 10));
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 2, 10));
-            set.addSerie(new Data.SerieTemplate(this.exercises[7], 3, 10));
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            var serie1 = new Data.SerieTemplate(this.exercises[6], 10, 50);
-            var serie2 = new Data.SerieTemplate(this.exercises[1], 30);
-            set.addSerie(serie1);
-            set.addSerie(serie2);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[8], 10, 50);
-            serie2 = new Data.SerieTemplate(this.exercises[2], 15, 70);
-            set.addSerie(serie1);
-            set.addSerie(serie2);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[9], 15, 35);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[10], 10, 120);
-            serie2 = new Data.SerieTemplate(this.exercises[3], 10, 15);
-            set.addSerie(serie1);
-            set.addSerie(serie2);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[11], 10, 8);
-            set.addSerie(serie1);
-            serie2 = serie1.clone();
-            serie2.reps = 8;
-            set.addSerie(serie2);
-            serie2 = serie1.clone();
-            serie2.reps = 6;
-            set.addSerie(serie2);
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[12], 10, 10);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[13], 10, 35);
-            set.addSerie(serie1);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie1.clone());
-
-            this.m_workoutTemplate.addSet(set);
-
-            set = new Data.SetTemplate();
-            serie1 = new Data.SerieTemplate(this.exercises[14], 10, 20);
-            serie2 = new Data.SerieTemplate(this.exercises[15], 75);
-            set.addSerie(serie1);
-            set.addSerie(serie2);
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-            set.addSerie(serie1.clone());
-            set.addSerie(serie2.clone());
-
-            this.m_workoutTemplate.addSet(set);
         }
 
         // FIXME: move to helper class

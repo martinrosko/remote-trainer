@@ -36,7 +36,7 @@
         public uiStartedOn: KnockoutObservable<Date>;
         public uiFinishedOn: KnockoutObservable<Date>;
         public duration: KnockoutObservable<number>;
-        public uiDurations: KnockoutComputed<string>;  //help
+        public uiDuration: KnockoutComputed<string>;  //help
         public uiAmount: KnockoutObservable<number>;
         public uiAmountHasFocus: KnockoutObservable<boolean>
         public uiReps: KnockoutObservable<number>;
@@ -200,83 +200,9 @@
             this.break(this.break() + 1);
         }
 
-        public showExerciseHistory(): void {
-            Program.instance.dataProvider.getExerciseSeries(this.exercise, series => Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series)));
-
-            //var series: Serie[] = [];
-            //var serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(10);
-            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 0, 0));
-            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 1, 0));
-            //serie.duration(60);
-            //serie.uiDifficulty(Serie.difficulties[3]);
-            //serie.order(1);
-            //serie.parentid = "1";
-
-            //series.push(serie);
-
-            //serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(10);
-            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 2, 30));
-            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 3, 40));
-            //serie.duration(70);
-            //serie.uiDifficulty(Serie.difficulties[3]);
-            //serie.order(2);
-            //serie.parentid = "1";
-
-            //series.push(serie);
-
-            //serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(8);
-            //serie.uiStartedOn(new Date(2018, 1, 1, 10, 5, 0));
-            //serie.uiFinishedOn(new Date(2018, 1, 1, 10, 6, 20));
-            //serie.duration(80);
-            //serie.uiDifficulty(Serie.difficulties[4]);
-            //serie.order(3);
-            //serie.parentid = "1";
-
-            //series.push(serie);
-
-            //serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(10);
-            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 0, 0));
-            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 1, 0));
-            //serie.duration(60);
-            //serie.uiDifficulty(Serie.difficulties[3]);
-            //serie.order(1);
-            //serie.parentid = "2";
-
-            //series.push(serie);
-
-            //serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(10);
-            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 2, 30));
-            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 3, 40));
-            //serie.duration(70);
-            //serie.uiDifficulty(Serie.difficulties[3]);
-            //serie.order(2);
-            //serie.parentid = "2";
-
-            //series.push(serie);
-
-            //serie = new Serie();
-            //serie.uiAmount(50);
-            //serie.uiReps(9);
-            //serie.uiStartedOn(new Date(2018, 1, 8, 10, 5, 0));
-            //serie.uiFinishedOn(new Date(2018, 1, 8, 10, 6, 20));
-            //serie.duration(80);
-            //serie.uiDifficulty(Serie.difficulties[3]);
-            //serie.order(3);
-            //serie.parentid = "2";
-
-            //series.push(serie);
-
-            //Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series))
+        public async showExerciseHistory(): Promise<void> {
+			var series = await Program.instance.dataProvider.getExerciseSeries(this.exercise);
+			Program.instance.showDialog(new ExerciseHistoryDialog(this.exercise, series));
         }
 
         public onStatusClicked(): void {
@@ -485,44 +411,71 @@
     }
 
     export class ExerciseHistoryDialog extends Dialog {
-        public items: ExerciseHistoryItem[];
+		public items: KnockoutObservableArray<ExerciseHistoryItem>;
+		public dateGrupping: KnockoutObservable<boolean>;
 
         constructor(exercise: Exercise, series: Serie[]) {
-            super();
+			super();
+
+			this.dateGrupping = ko.observable(true);
+			this.dateGrupping.subscribe(value => this._updateItems(), this);
 
             this.name(exercise.name);
             this.uiContentTemplateName("tmplExerciseHistoryDialog");
 
             series = series.sort((a, b) => b.uiFinishedOn().getTime() - a.uiFinishedOn().getTime());
+			this.m_series = series;
+			this.m_exercise = exercise;
 
-            this.items = [];
-            
-            var parentId = "";
-            var prevSerie: Serie;
-            while (series.length > 0) {
-                var item: ExerciseHistoryItem;
-                var serie = series.pop();
+			this.items = ko.observableArray<ExerciseHistoryItem>();
+			this._updateItems();
+		}
 
-                if (parentId !== serie.parentid) {
-                    // new set, new day => create date separator
-                    this.items.push(new DateHistoryItem(exercise, serie.uiFinishedOn()));
-                    parentId = serie.parentid;
-                    prevSerie = null;
-                }
+		private _updateItems(): void {
+			var items = this.items();
+				items.splice(0);
 
-                // if not first serie of a set, add break item
-                if (prevSerie)
-                    this.items.push(new BreakHistoryItem(exercise, Math.round((serie.uiStartedOn().getTime() - prevSerie.uiFinishedOn().getTime()) / 1000)));
+			if (this.dateGrupping()) {
+				var parentId = "";
+				var prevSerie: Serie;
+				var dateItem: GroupHistoryItem;
+				for (var serie of this.m_series) {
+					var item: ExerciseHistoryItem;
 
-                // add serie item
-                this.items.push(new SerieHistoryItem(exercise, serie));
-                prevSerie = serie;
-            }
-        }
+					if (parentId !== serie.parentid) {
+						// new set, new day => create date separator
+						dateItem = new GroupHistoryItem(this.m_exercise, moment(serie.uiFinishedOn()).format("dddd, D.M.YYYY"));
+						items.push(dateItem);
+						parentId = serie.parentid;
+						prevSerie = null;
+					}
+
+					// if not first serie of a set, add break item
+					if (prevSerie)
+						dateItem.items.splice(0, 0, new BreakHistoryItem(this.m_exercise, Math.round((prevSerie.uiStartedOn().getTime() - serie.uiFinishedOn().getTime()) / 1000)));
+
+					// add serie item
+					dateItem.items.splice(0, 0, new SerieHistoryItem(this.m_exercise, serie));
+					prevSerie = serie;
+				}
+			}
+			else {
+				var groupItem = new GroupHistoryItem(this.m_exercise, "Difficulty");
+				for (var serie of this.m_series) {
+					groupItem.items.splice(0, 0, new SerieHistoryItem(this.m_exercise, serie));
+				}
+				items.push(groupItem);
+			}
+
+			this.items.valueHasMutated();
+		}
+
+		private m_series: Data.Serie[];
+		private m_exercise: Data.Exercise;
     }
 
     export enum HistoryItemType {
-        Date,
+        Group,
         Serie,
         Break
     }
@@ -554,17 +507,19 @@
             this.type = HistoryItemType.Break;
             this.durationLabel = Program.instance.spanToTimeLabel(duration);
         }
-    }
+	}
 
-    class DateHistoryItem extends ExerciseHistoryItem {
-        public dateLabel: string;
+	class GroupHistoryItem extends ExerciseHistoryItem {
+		public label: string;
+		public items: ExerciseHistoryItem[];
 
-        constructor(exercise: Exercise, date: Date) {
-            super(exercise);
-            this.type = HistoryItemType.Date;
-            this.dateLabel = moment(date).format("dddd, D.M.YYYY");
-        }
-    }
+		constructor(exercise: Exercise, label: string) {
+			super(exercise);
+			this.items = [];
+			this.label = label;
+			this.type = HistoryItemType.Group;
+		}
+	}
 
     export enum SerieStatus {
         Queued = 1,

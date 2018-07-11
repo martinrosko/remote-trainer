@@ -1,8 +1,17 @@
 ﻿module RemoteTrainer.Service {
-    export class JSBridgeProvider implements IDataProvider {
+    export class JSBridgeProvider {// implements IDataProvider {
         private m_categories: Data.Category[];
         private m_exercises: Data.Exercise[];
         private m_workoutTemplates: Data.WorkoutTemplate[];
+        private m_service: Resco.Data.WebService.ICrmService;
+
+        constructor(service: Resco.Data.WebService.ICrmService) {
+            this.m_service = service;
+        }
+
+        public connect(service: Resco.Data.WebService.ICrmService) {
+            this.m_service = service;
+        }
 
         public initialize(onLoaded: (categories: Data.Category[], exercises: Data.Exercise[], workouts: Data.WorkoutTemplate[]) => void): void {
             this._loadCategories(() => this._loadExercises(() => this._loadTemplates(() => {
@@ -475,41 +484,4 @@
             });
         }
     }
-
-
-    class JSBridgeEntityWriter implements IEntityWriter {
-        private m_jsbEntity: any;// MobileCRM.DynamicEntity;
-        private m_storageLock: boolean;
-
-        private m_oldValues: Resco.Dictionary<string, any>;
-
-        constructor(entity: any/*MobileCRM.DynamicEntity*/) {
-            this.m_jsbEntity = entity;
-            this.m_oldValues = new Resco.Dictionary<string, any>();
-        }
-
-        public subscribeObservableForWriting<T>(obsVar: KnockoutObservable<T>, fieldName: string): void {
-            obsVar.subscribe(oldValue => {
-                this.m_oldValues.set(fieldName, oldValue);
-            }, this, "beforeChange");
-
-            obsVar.subscribe(value => {
-                if (!this.m_storageLock) {
-                    this.m_jsbEntity.properties[fieldName] = value;
-                    this.m_jsbEntity.save((err: string) => {
-                        if (err) {
-                            let oldLockValue = this.m_storageLock;
-                            this.m_storageLock = true;
-                            obsVar(this.m_oldValues.getValue(fieldName));
-                            this.m_storageLock = oldLockValue;
-                        }
-                    });
-                }
-            }, this, );
-        }
-
-        public save(): void {
-        }
-    }
-
 }

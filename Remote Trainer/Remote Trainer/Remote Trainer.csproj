@@ -35,7 +35,7 @@
     <TypeScriptTarget>ES5</TypeScriptTarget>
     <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
     <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
-    <TypeScriptNoImplicitAny>True</TypeScriptNoImplicitAny>
+    <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
     <TypeScriptModuleKind>CommonJS</TypeScriptModuleKind>
     <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
     <TypeScriptOutFile />
@@ -77,6 +77,23 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Charts\chart.js" />
+    <Content Include="Charts\css\nv.d3.min.css" />
+    <Content Include="Charts\d3.min.js" />
+    <Content Include="Charts\lib\axis.js" />
+    <Content Include="Charts\lib\core.js" />
+    <Content Include="Charts\lib\d3-funnel.js" />
+    <Content Include="Charts\lib\legend.js" />
+    <Content Include="Charts\lib\line.js" />
+    <Content Include="Charts\lib\lineChart.js" />
+    <Content Include="Charts\lib\multiBar.js" />
+    <Content Include="Charts\lib\multiBarChart.js" />
+    <Content Include="Charts\lib\multiBarHorizontal.js" />
+    <Content Include="Charts\lib\multiBarHorizontalChart.js" />
+    <Content Include="Charts\lib\pie.js" />
+    <Content Include="Charts\lib\pieChart.js" />
+    <Content Include="Charts\lib\scatter.js" />
+    <Content Include="Charts\lib\utils.js" />
     <Content Include="editor.css" />
     <Content Include="app.css" />
     <Content Include="editor.html" />
@@ -87,6 +104,7 @@
     <Content Include="Images\serieStatusRunning.png" />
     <Content Include="Images\setup.png" />
     <Content Include="index.html" />
+    <Content Include="Libraries\es6_shim_min.js" />
     <Content Include="Libraries\images\ui-icons_444444_256x240.png" />
     <Content Include="Libraries\images\ui-icons_555555_256x240.png" />
     <Content Include="Libraries\images\ui-icons_777620_256x240.png" />
@@ -98,26 +116,45 @@
     <Content Include="Libraries\jquery-ui.min.js" />
     <Content Include="Libraries\JSBridge.js" />
     <Content Include="Libraries\knockout-3.4.2.js" />
+    <Content Include="Libraries\knockout.sortable.js" />
     <Content Include="Libraries\moment-2.19.1.min.js" />
+    <Content Include="Libraries\sortable.js" />
     <Content Include="Specification.txt" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
-    <TypeScriptCompile Include="Common\common.ts" />
-    <TypeScriptCompile Include="Common\event.ts" />
-    <TypeScriptCompile Include="Common\exception.ts" />
+    <TypeScriptCompile Include="Charts\chart.d.ts" />
     <TypeScriptCompile Include="Controls\selectBox.ts" />
     <TypeScriptCompile Include="Data\category.ts" />
     <TypeScriptCompile Include="Data\exercise.ts" />
     <TypeScriptCompile Include="Data\set.ts" />
     <TypeScriptCompile Include="Data\serie.ts" />
     <TypeScriptCompile Include="Data\workout.ts" />
+    <TypeScriptCompile Include="Libraries\es6-shim.d.ts" />
     <TypeScriptCompile Include="Libraries\jquery.d.ts" />
     <TypeScriptCompile Include="Libraries\JSBridge.d.ts" />
     <TypeScriptCompile Include="Libraries\knockout.d.ts" />
     <TypeScriptCompile Include="Libraries\jquery.ui.d.ts" />
     <TypeScriptCompile Include="Libraries\moment.d.ts" />
+    <TypeScriptCompile Include="Libraries\textencoding.d.ts" />
+    <TypeScriptCompile Include="Resco\bindingList.ts" />
+    <TypeScriptCompile Include="Resco\common.ts" />
+    <TypeScriptCompile Include="Resco\convert.ts" />
+    <TypeScriptCompile Include="Resco\Data\baseTypes.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\Crm2011\crmService2011.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\Crm2011\xrmSerializer.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\crmTypes.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\fetchRequestParams.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\httpRequest.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\ICrmService.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\simpleLoginInfo.ts" />
+    <TypeScriptCompile Include="Resco\Data\WebService\Xrm\xrmService.ts" />
+    <TypeScriptCompile Include="Resco\Data\xml.ts" />
+    <TypeScriptCompile Include="Resco\event.ts" />
+    <TypeScriptCompile Include="Resco\exception.ts" />
+    <TypeScriptCompile Include="Resco\logger.ts" />
+    <TypeScriptCompile Include="Service\DataProvider.ts" />
     <TypeScriptCompile Include="Service\IDataProvider.ts" />
     <TypeScriptCompile Include="Service\JSBridgeProvider.ts" />
     <TypeScriptCompile Include="UI\koCustomBindings.ts" />

@@ -12,7 +12,7 @@ var RemoteTrainer;
 (function (RemoteTrainer) {
     var Data;
     (function (Data) {
-        var SetTemplate = (function () {
+        var SetTemplate = /** @class */ (function () {
             function SetTemplate() {
                 this.serieTemplates = [];
                 this.order = ko.observable();
@@ -32,7 +32,7 @@ var RemoteTrainer;
             return SetTemplate;
         }());
         Data.SetTemplate = SetTemplate;
-        var Set = (function (_super) {
+        var Set = /** @class */ (function (_super) {
             __extends(Set, _super);
             function Set(template) {
                 var _this = _super.call(this) || this;
@@ -311,7 +311,7 @@ var RemoteTrainer;
             return Set;
         }(SetTemplate));
         Data.Set = Set;
-        var ModifySetDialog = (function (_super) {
+        var ModifySetDialog = /** @class */ (function (_super) {
             __extends(ModifySetDialog, _super);
             function ModifySetDialog(set) {
                 var _this = _super.call(this) || this;
@@ -323,7 +323,7 @@ var RemoteTrainer;
             return ModifySetDialog;
         }(RemoteTrainer.Dialog));
         Data.ModifySetDialog = ModifySetDialog;
-        var AddSerieDialog = (function (_super) {
+        var AddSerieDialog = /** @class */ (function (_super) {
             __extends(AddSerieDialog, _super);
             function AddSerieDialog(categories, exercises) {
                 var _this = _super.call(this) || this;

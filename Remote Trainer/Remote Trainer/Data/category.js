@@ -2,7 +2,7 @@ var RemoteTrainer;
 (function (RemoteTrainer) {
     var Data;
     (function (Data) {
-        var Category = (function () {
+        var Category = /** @class */ (function () {
             function Category(name, light, dark) {
                 this.name = name;
                 this.colorLight = light;

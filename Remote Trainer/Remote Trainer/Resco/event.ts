@@ -1,6 +1,6 @@
 ﻿module Resco {
     export class Event<TArgs> {
-        constructor(sender:any) {
+        constructor(sender: any) {
             this.m_sender = sender;
             this.m_handlers = new Array<EventHandlerDescriptor<TArgs>>();
             this.m_handlersToBeRemoved = new Array<EventHandlerDescriptor<TArgs>>();
@@ -22,7 +22,7 @@
 
             for (var i = 0; i < this.m_handlers.length; i++) {
                 this.m_handlers[i].handler.call(this.m_handlers[i].target, sender ? sender : this.m_sender, args);
-                if (args && args.hasOwnProperty("cancel") && (<any>args)["cancel"]) {
+                if (args && args.hasOwnProperty("cancel") && args["cancel"]) {
                     break;
                 }
             }
@@ -35,7 +35,7 @@
             this.m_handlersToBeRemoved.splice(0, this.m_handlersToBeRemoved.length);
         }
 
-		public add(target: any, handler: (source: any, args: TArgs) => void, unique?: boolean) {
+        public add(target: any, handler: (any, TArgs) => void, unique?: boolean) {
             if (unique) {
                 for (var i = 0; i < this.m_handlers.length; i++) {
                     if (this.m_handlers[i].handler == handler && this.m_handlers[i].target == target) {
@@ -46,7 +46,7 @@
             this.m_handlers.push(new EventHandlerDescriptor(target, handler));
         }
 
-        public remove(target: any, handler: (source: any, args: TArgs) => void) {
+        public remove(target, handler: (any, TArgs) => void) {
             var index = 0;
 
             while (index < this.m_handlers.length) {
@@ -80,13 +80,13 @@
     }
 
     export class EventHandlerDescriptor<TArgs> {
-        constructor(t: any, h: (source: any, args: TArgs) => void) {
+        constructor(t: any, h: (any, TArgs) => void) {
             this.target = t;
             this.handler = h;
         }
 
         public target: any;
-        public handler: (source: any, args: TArgs) => void;
+        public handler: (any, TArgs) => void;
     }
 
     export class EventArgs {
@@ -116,5 +116,17 @@
             super();
             this.m_propertyName = name;
         }
-    }
+	}
+
+	export class ItemSelectedEventArgs extends EventArgs {
+		public data: any;
+		public index: number;
+		public selected: boolean;
+		constructor(data: any, index: number, selected: boolean = true) {
+			super();
+			this.data = data;
+			this.index = index;
+			this.selected = selected;
+		}
+	}
 } 

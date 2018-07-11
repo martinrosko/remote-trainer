@@ -26,6 +26,7 @@
         public removedSets: Resco.Dictionary<string, Set>;
         public status: KnockoutObservable<WorkoutStatus>;
         public startedOn: KnockoutObservable<Date>;
+        public estimatedEnd: KnockoutComputed<Date>;
         public finishedOn: KnockoutObservable<Date>;
         public duration: KnockoutObservable<number>;
         public uiDuration: KnockoutComputed<string>;
@@ -82,6 +83,19 @@
                     });
                 });
                 return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
+            }, this);
+
+            this.estimatedEnd = ko.computed(() => {
+                var estDuration = 0;
+                this.sets().forEach(set => {
+                    if (set.status() !== SetStatus.Finished) {
+                        set.series().forEach(serie => {
+                            if (serie.status() === SerieStatus.Ready || serie.status() === SerieStatus.Queued)
+                                estDuration += serie.exercise.averageDurationPerRep + 75;   // 75 seconds is estimated length of average break
+                        }, this);
+                    }
+                }, this);
+                return new Date(Date.now() + (estDuration * 1000));
             }, this);
 
             this.displayedSet = ko.observable<Data.Set>();

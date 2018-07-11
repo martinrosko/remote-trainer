@@ -2,7 +2,7 @@ var RemoteTrainer;
 (function (RemoteTrainer) {
     var Data;
     (function (Data) {
-        var Exercise = (function () {
+        var Exercise = /** @class */ (function () {
             function Exercise() {
             }
             return Exercise;
