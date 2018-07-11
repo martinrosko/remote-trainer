@@ -1,8 +1,13 @@
-﻿body {
+﻿html {
+    height: 100%;
+}
+
+body {
     font-family: 'Segoe UI', sans-serif;
     font-size: 12px;
     padding: 0px;
     margin: 0px;
+    height: 100%;
 }
 
 span {
@@ -13,16 +18,61 @@ div {
     box-sizing: border-box;
 }
 
-.page .header {
+select {
+    border: 0px;
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+}
+
+.page > .header {
     width: 100%;
     background: #333333;
     color: white;
     padding: 5px;
 }
 
-.set .serieHeader {
+.page > .tabControl {
+    width: 100%;
+    text-align: center;
+    color: black;
+    display: flex;
+    background: #333333;
+    padding-top: 5px;
+}
+
+.tabControl .tabItem {
+    flex: 1;
+    height: 100%;
     padding: 5px;
-    border-bottom: dotted 1px black
+    border-bottom: solid 1px black;
+    color: white;
+    cursor: pointer;
+}
+
+.tabControl .selected {
+    border-bottom: solid 1px #eeeeee;
+    background: #eeeeee;
+    color: black;
+}
+
+.page > .content {
+    flex: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
+}
+
+.setDetail {
+    border: solid 1px black;
+    box-shadow: 5px 5px 1px rgba(0,0,0,0.55);
+}
+
+.set .serieHeader {
+    border-bottom: dashed 1px black;
+    box-shadow: 5px 5px 1px rgba(0,0,0,0.55);
 }
 
 .set .serie {
@@ -34,9 +84,20 @@ div {
     height: 55px;
     align-items: center;
     position: relative;
+    box-shadow: 5px 5px 1px rgba(0,0,0,0.55);
 }
 
-    .set .serie .cell {
+ .setinfo {
+    background: white;
+    height: 35px;
+    line-height: 35px;
+    display: inline-block;
+    width: 100%;
+    text-align: left;
+}
+
+    .set .serie .cell,
+    .set .setinfo .cell {
         padding: 5px;
         line-height: 45px;
         height: 100%;
@@ -44,38 +105,58 @@ div {
         flex-shrink: 0;
     }
 
-    .set .serie .button {
+    .set .serie .button,
+    .setinfo .button {
         width: 75px;
         cursor: pointer;
     }
 
-    .set .serie .info {
+    .set .serie .info,
+    .setinfo .info {
         padding: 5px;
         border-right: solid 1px black;
         flex: 1;
         height: 100%;
     }
 
-    .set .serie .imgStatus {
+    .set .serie .imgStatus,
+    .setinfo .imgStatus {
         background-position: 50% 50%;
         background-size: 66%;
         background-repeat: no-repeat;
-        border-right: dotted 1px #555555;
+        border-right: dashed 1px #555555;
     }
 
-    .set .serie .optionPanel {
+    .set .serie .optionPanel,
+    .setinfo .optionPanel {
         position: absolute;
         top: 0px;
         width: 100%;
         height: 100%;
         display: flex;
-        left: calc(55px - 100%);
     }
+
+.exerciseHistory {
+    background: white;
+    height: 25px;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+.exerciseHistory .cell {
+    padding: 5px;
+    height: 100%;
+    flex: 1 1 auto;
+    font-style: normal;
+    min-width: 15%;
+}
+
 
 .difficultyButton {
     padding: 5px;
     width: 20%;
-    border-right: dotted 1px black;
+    border-right: dashed 1px black;
     cursor: pointer;
     line-height:normal;
     font-size: 0.8em;
@@ -94,7 +175,7 @@ div {
     }
 
     @keyframes openOptions {
-        from { left: -80%; }
+        from { left: -100%; }
         to { left: 0px; }
     }
 
@@ -104,30 +185,17 @@ div {
 
     @keyframes closeOptions {
         from { left: 0px; }
-        to { left: -80%; }
+        to { left: -100%; }
     }
-
-.set .break {
-  padding: 5px;
-  box-sizing: border-box;
-  border-bottom: solid 1px black;
-  background: white;
-  font-size: 12px;
-  text-align: center;
-  background: #eeeeee
-}
-
-.set .activeBreak {
-  background: white;
-}
 
 span.bigDigit {
     font-size: 2.8em;
     font-weight: bold;
 }
 
-span.countDown {
-    color: red;
+span.bigestDigit {
+    font-size: 5.6em;
+    font-weight: bold;
 }
 
 span.annotation {
@@ -148,4 +216,14 @@ h2 {
 
 .highlight {
     font-weight: bold;
+}
+
+.link {
+    cursor: pointer;
+    text-decoration: underline;
+    color: blue;
+}
+
+div.ui-datepicker {
+    font-size: 20px;
 }

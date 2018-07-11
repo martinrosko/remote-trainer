@@ -5,4 +5,19 @@ ko.bindingHandlers.app = {
         ko.renderTemplate("tmplApplication", valueAccessor(), { templateEngine: ko.nativeTemplateEngine.instance }, element, "replaceNode");
     }
 };
+ko.bindingHandlers.datepicker = {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+        var value = valueAccessor();
+        $(element).datepicker({
+            onSelect: function (date) {
+                value(date);
+            },
+            minDate: 0
+        });
+        if (value())
+            $(element).datepicker("setDate", value());
+    },
+    update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
+    }
+};
 //# sourceMappingURL=koCustomBindings.js.map

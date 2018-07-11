@@ -1,5 +1,6 @@
 ﻿module RemoteTrainer.Data {
     export class WorkoutTemplate {
+        public id: string;
 		public name: string;
 		public description: string;
 		public setTemplates: SetTemplate[];
@@ -11,176 +12,208 @@
         public addSet(set: SetTemplate): void {
             this.setTemplates.push(set);
             set.parent = this;
-            set.order = this.setTemplates.length;
-		}
+            set.order(this.setTemplates.length);
+        }
 
-		public copyTo(dst: WorkoutTemplate): void {			
-			dst.name = this.name;
-			dst.description = this.description;
-		}
-	}
+        public copyTo(dst: WorkoutTemplate): void {
+            dst.name = this.name;
+            dst.description = this.description;
+        }
+    }
 
-	export class Workout extends WorkoutTemplate {
-		public sets: KnockoutObservableArray<Set>;
-		public uiStartedOn: KnockoutObservable<Date>;
-		public uiFinishedOn: KnockoutObservable<Date>;
-		public uiStatus: KnockoutObservable<WorkoutStatus>;
-		public uiDuration: KnockoutObservable<number>;
-		public uiDurationLabel: KnockoutComputed<string>;
-		public uiCompletion: KnockoutObservable<number>;
-		public uiEstDurationLeft: KnockoutObservable<number>;
-		public uiEstimatedEndLabel: KnockoutComputed<string>;
-		public activeSet: KnockoutObservable<Set>;
+    export class Workout extends WorkoutTemplate {
+        public sets: KnockoutObservableArray<Set>;
+        public removedSets: Resco.Dictionary<string, Set>;
+        public status: KnockoutObservable<WorkoutStatus>;
+        public startedOn: KnockoutObservable<Date>;
+        public finishedOn: KnockoutObservable<Date>;
+        public duration: KnockoutObservable<number>;
+        public uiDuration: KnockoutComputed<string>;
+        public completition: KnockoutComputed<number>;
+        public averageDifficulty: KnockoutComputed<number>;
 
-		public uiCategoriesInSet: KnockoutObservableArray<Category>;
-		public uiExercisesInSet: KnockoutObservableArray<Exercise>;
+        public displayedSet: KnockoutObservable<Data.Set>;
 
-		constructor(template: WorkoutTemplate) {
-			super();
-			template.copyTo(this);
+        constructor(template?: WorkoutTemplate) {
+            super();
 
-			this.uiStartedOn = ko.observable<Date>();
-			this.uiFinishedOn = ko.observable<Date>();
-			this.uiDuration = ko.observable<number>();
-			this.uiDurationLabel = ko.computed<string>(() => {
-				var duration = this.uiDuration();
-				var mmntDur = moment.duration(duration, "seconds");
-				var hours = Math.floor(mmntDur.asHours());
-				var minutes = Math.floor(mmntDur.asMinutes());
-				var seconds = Math.floor(mmntDur.asSeconds());
-				return (hours < 10 ? "0" : "") + hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-			}, this);
+            this.status = ko.observable(WorkoutStatus.Ready);
+            this.startedOn = ko.observable<Date>();
+            this.finishedOn = ko.observable<Date>();
+            this.sets = ko.observableArray<Set>();
+            this.removedSets = new Resco.Dictionary<string, Set>();
 
-			this.uiEstDurationLeft = ko.observable<number>();
-			this.uiEstimatedEndLabel = ko.computed<string>(() => {
-				var now = Date.now();
-				var estDuration = this.uiEstDurationLeft();
-				var mmntEstEnd = moment(now + (estDuration * 1000));
-				return mmntEstEnd.format("HH:mm") + " (" + moment.duration(estDuration, "seconds").humanize(true) + ")";
-			}, this);
+            if (template) {
+                template.copyTo(this);
+                template.setTemplates.forEach(setTemplate => this.addSet(new Set(setTemplate)), this);
+            }
 
-			this.uiCompletion = ko.observable(0);
+            this.duration = ko.observable<number>(0);
 
-			this.uiStatus = ko.observable(WorkoutStatus.Scheduled);
-			this.uiStatus.subscribe((value) => {
-				if (this.m_durationTimer) {
-					window.clearInterval(this.m_durationTimer);
-					this.m_durationTimer = 0;
-				}
+            this.uiDuration = ko.computed(() => {
+                let duration = this.duration();
+                return duration >= 0 ? Program.instance.spanToTimeLabel(duration) : "";
+            }, this)
 
-				if (value === WorkoutStatus.Running) {
-					this.m_durationTimer = window.setInterval(() => {
-						this.uiDuration(this.uiDuration() + 1);
-					}, 1000);
-				}
-			}, this);
+            this.completition = ko.computed(() => {
+                let numSeries = 0;
+                let finishedSeries = 0;
 
-			this.sets = ko.observableArray<Set>();
-			var sets = this.sets();
-			template.setTemplates.forEach((setTemplate, index) => {
-				var set = new Set(setTemplate);
-				set.parent = this;
-				set.order = index;
-				sets.push(set);
-				if (index > 0) {
-					sets[index - 1].next(set);
-					set.previous(sets[index - 1]);
-				}
-			}, this);
-			this.sets.valueHasMutated();
+                this.sets().forEach(set => {
+                    set.series().forEach(serie => {
+                        numSeries++;
+                        if (serie.status() === Data.SerieStatus.Finished)
+                            finishedSeries++;
+                    });
+                });
+                return Math.round((finishedSeries / numSeries) * 100);
+            }, this);
 
-			this.activeSet = ko.observable(sets[0]);
+            this.averageDifficulty = ko.computed(() => {
+                let difficulty = 0;
+                let finishedSeries = 0;
 
-			this.uiCategoriesInSet = ko.observableArray<Category>();
-			this.uiExercisesInSet = ko.observableArray<Exercise>();
+                this.sets().forEach(set => {
+                    set.series().forEach(serie => {
+                        if (serie.status() === Data.SerieStatus.Finished) {
+                            finishedSeries++;
+                            difficulty += serie.difficulty();
+                        }
+                    });
+                });
+                return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
+            }, this);
 
-			this._updateWorkoutItems();
-		}
+            this.displayedSet = ko.observable<Data.Set>();
+        }
 
-		public start(): void {
-			this.uiDuration(0);
-			this.uiStartedOn(new Date());
+        public addSet(set: Set): void {
+            let index = this.sets().length;
+            set.parent = this;
+            set.order(index + 1);
+            this.sets.push(set);
 
-			if (this.sets().length > 0)
-				this.uiStatus(WorkoutStatus.Running);
-			else
-				stop();
+            if (index > 0) {
+                this.sets()[index - 1].next(set);
+                set.previous(this.sets()[index - 1]);
+            }
+        }
 
-			this.updateCompletionStatus();
-		}
+        public start(): void {
+            this.status(WorkoutStatus.Running);
 
-		public pause(): void {
-			this.uiStatus(WorkoutStatus.Paused);
-		}
+            this.startedOn(new Date());
+            this.duration(0);
 
-		public continueWorkout(): void {
-			this.uiStatus(WorkoutStatus.Running);
-		}
+            // subscribe duration timer to global timer
+            this.m_durationTimer = new GlobalTimer();
+            this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+            Program.instance.GlobalTimer.push(this.m_durationTimer);
 
-		public stop(): void {
-			this.uiFinishedOn(new Date());
-			this.uiStatus(WorkoutStatus.Finished);
-		}
+            this.displayedSet = ko.observable<Data.Set>(this.sets()[0])
+            if (this.displayedSet())
+                this.displayedSet().status(SetStatus.Ready);
+        }
 
-		public showPreviousSet(): void {
-			var activeSet = this.activeSet();
-			if (activeSet && activeSet.previous())
-				this.activeSet(activeSet.previous());
-		}
+        public pause(): void {
+            if (this.status() === WorkoutStatus.Running) {
+                // pause global timers
+                Program.instance.globalTimerPaused = true;
+                this.status(WorkoutStatus.Paused);
+                let activeSet = this.sets().firstOrDefault(set => set.status() === SetStatus.Running || set.status() === SetStatus.Ready);
+                if (activeSet)
+                    activeSet.pause();
+            }
+        }
 
-		public showNextSet(): void {
-			var activeSet = this.activeSet();
-			if (activeSet && activeSet.next())
-				this.activeSet(activeSet.next());
-		}
+        public resume(): void {
+            if (this.status() === WorkoutStatus.Paused) {
+                // resume global timers
+                Program.instance.globalTimerPaused = false;
+                this.status(WorkoutStatus.Running);
+                // serie is restarted explicitly by user (it has its own countdown timer...)
 
-		public updateCompletionStatus(): void {
-			var serieCount = 0;
-			var completedCount = 0;
-			var estDurationLeft = 0;
+                // if workout was loaded in paused state, this timer was not created yet
+                if (!this.m_durationTimer) {
+                    this.m_durationTimer = new GlobalTimer();
+                    this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                    Program.instance.GlobalTimer.push(this.m_durationTimer);
+                }
 
-			this.sets().forEach(set => {
-				set.series().forEach(serie => {
-					serieCount++;
-					if (serie.uiStatus() === SerieStatus.Finished)
-						completedCount++;
-					else 
-						estDurationLeft += (serie.exercise.averageDurationPerRep * serie.reps) + 60;	// 60 is average duration of the break
-				});
-			}, this);
+                let pausedSet = this.sets().firstOrDefault(set => set.status() === SetStatus.Paused);
+                if (pausedSet)
+                    pausedSet.resume(false);
+            }
+        }
 
-			this.uiCompletion(Math.round((completedCount * 100) / serieCount));
-			this.uiEstDurationLeft(estDurationLeft);
-		}
+        public stop(): void {
+            let unfinishedSet = this.sets().firstOrDefault(set => set.status() !== SetStatus.Finished);
+            if (unfinishedSet) {
+                let confirm = new MessageBox("Do you want to complete the workout? All unfinished sets will be removed.", ["Complete"], "Cancel");
+                confirm.closed.add(this, (sender, e) => this._completeWorkout());
+                confirm.show();
+            }
+            else {
+                this._completeWorkout();
+            }
+        }
 
-		private _updateWorkoutItems(): void {
-			var sets = this.sets();
-			var catsInSet = this.uiCategoriesInSet();
-			var exInSet = this.uiExercisesInSet();
+        private _completeWorkout(): void {
+            Program.instance.GlobalTimer.splice(0);
+            this.finishedOn(new Date());
+            this.status(WorkoutStatus.Finished);
 
-			sets.forEach(set => {
-				var series = set.series();
-				series.forEach(serie => {
-					if (!catsInSet.contains(serie.exercise.category))
-						catsInSet.push(serie.exercise.category);
+            let sets = this.sets();
+            for (let i = sets.length - 1; i >= 0; i--) {
+                let set = sets[i];
+                if (set.status() === SetStatus.Queued || set.status() === SetStatus.Ready) {
+                    set.remove(false);
+                }
+                else if (set.status() !== SetStatus.Finished) {
+                    // remove unfinished series of incomplete sets
+                    let series = set.series();
+                    for (let j = series.length - 1; j >= 0; j--) {
+                        let serie = series[j];
+                        if (serie.status() !== SerieStatus.Finished)
+                            serie.remove(false);
+                    }
+                    set.status(SetStatus.Finished);
+                }
+            }
+        }
 
-					if (!exInSet.contains(serie.exercise))
-						exInSet.push(serie.exercise);
-				}, this);
-			}, this);
+        public addNewSet(): void {
+            let set = new Set();
+            let dialog = new ModifySetDialog(set);
+            dialog.closing.add(this, (sender, e) => {
+                if (set.series().length === 0) {
+                    let alert = new MessageBox("Set cannot be empty");
+                    alert.show();
+                    e.cancel = true;
+                }
+            });
 
-			this.uiCategoriesInSet.valueHasMutated();
-			this.uiExercisesInSet.valueHasMutated();
-		}
+            dialog.closed.add(this, (sender, e) => {
+                if (dialog.dialogResult) {
+                    this.addSet(set);
+                    if ((this.status() === WorkoutStatus.Running || this.status() === WorkoutStatus.Paused) && (!set.previous() || set.previous().status() === Data.SetStatus.Finished))
+                        set.status(Data.SetStatus.Ready);
+                }
+            });
+            Program.instance.showDialog(dialog);
+        }
 
-		private m_durationTimer: number;
-	}
+        private _onDurationTimer(context: any): void {
+            this.duration(this.duration() + 1);
+        }
 
-	export enum WorkoutStatus {
-		Scheduled,
-		Ready,
-		Running,
-		Paused,
-		Finished
-	}
+        private m_durationTimer: GlobalTimer;
+    }
+
+    export enum WorkoutStatus {
+        Ready = 1,
+        Finished = 2,
+        Running = 10000,
+        Paused = 10001
+    }
 }

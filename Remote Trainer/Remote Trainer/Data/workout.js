@@ -19,7 +19,7 @@ var RemoteTrainer;
             WorkoutTemplate.prototype.addSet = function (set) {
                 this.setTemplates.push(set);
                 set.parent = this;
-                set.order = this.setTemplates.length;
+                set.order(this.setTemplates.length);
             };
             WorkoutTemplate.prototype.copyTo = function (dst) {
                 dst.name = this.name;
@@ -32,129 +32,163 @@ var RemoteTrainer;
             __extends(Workout, _super);
             function Workout(template) {
                 var _this = _super.call(this) || this;
-                template.copyTo(_this);
-                _this.uiStartedOn = ko.observable();
-                _this.uiFinishedOn = ko.observable();
-                _this.uiDuration = ko.observable();
-                _this.uiDurationLabel = ko.computed(function () {
-                    var duration = _this.uiDuration();
-                    var mmntDur = moment.duration(duration, "seconds");
-                    var hours = Math.floor(mmntDur.asHours());
-                    var minutes = Math.floor(mmntDur.asMinutes());
-                    var seconds = Math.floor(mmntDur.asSeconds());
-                    return (hours < 10 ? "0" : "") + hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-                }, _this);
-                _this.uiEstDurationLeft = ko.observable();
-                _this.uiEstimatedEndLabel = ko.computed(function () {
-                    var now = Date.now();
-                    var estDuration = _this.uiEstDurationLeft();
-                    var mmntEstEnd = moment(now + (estDuration * 1000));
-                    return mmntEstEnd.format("HH:mm") + " (" + moment.duration(estDuration, "seconds").humanize(true) + ")";
-                }, _this);
-                _this.uiCompletion = ko.observable(0);
-                _this.uiStatus = ko.observable(WorkoutStatus.Scheduled);
-                _this.uiStatus.subscribe(function (value) {
-                    if (_this.m_durationTimer) {
-                        window.clearInterval(_this.m_durationTimer);
-                        _this.m_durationTimer = 0;
-                    }
-                    if (value === WorkoutStatus.Running) {
-                        _this.m_durationTimer = window.setInterval(function () {
-                            _this.uiDuration(_this.uiDuration() + 1);
-                        }, 1000);
-                    }
-                }, _this);
+                _this.status = ko.observable(WorkoutStatus.Ready);
+                _this.startedOn = ko.observable();
+                _this.finishedOn = ko.observable();
                 _this.sets = ko.observableArray();
-                var sets = _this.sets();
-                template.setTemplates.forEach(function (setTemplate, index) {
-                    var set = new Data.Set(setTemplate);
-                    set.parent = _this;
-                    set.order = index;
-                    sets.push(set);
-                    if (index > 0) {
-                        sets[index - 1].next(set);
-                        set.previous(sets[index - 1]);
-                    }
+                _this.removedSets = new Resco.Dictionary();
+                if (template) {
+                    template.copyTo(_this);
+                    template.setTemplates.forEach(function (setTemplate) { return _this.addSet(new Data.Set(setTemplate)); }, _this);
+                }
+                _this.duration = ko.observable(0);
+                _this.uiDuration = ko.computed(function () {
+                    var duration = _this.duration();
+                    return duration >= 0 ? RemoteTrainer.Program.instance.spanToTimeLabel(duration) : "";
                 }, _this);
-                _this.sets.valueHasMutated();
-                _this.activeSet = ko.observable(sets[0]);
-                _this.uiCategoriesInSet = ko.observableArray();
-                _this.uiExercisesInSet = ko.observableArray();
-                _this._updateWorkoutItems();
+                _this.completition = ko.computed(function () {
+                    var numSeries = 0;
+                    var finishedSeries = 0;
+                    _this.sets().forEach(function (set) {
+                        set.series().forEach(function (serie) {
+                            numSeries++;
+                            if (serie.status() === Data.SerieStatus.Finished)
+                                finishedSeries++;
+                        });
+                    });
+                    return Math.round((finishedSeries / numSeries) * 100);
+                }, _this);
+                _this.averageDifficulty = ko.computed(function () {
+                    var difficulty = 0;
+                    var finishedSeries = 0;
+                    _this.sets().forEach(function (set) {
+                        set.series().forEach(function (serie) {
+                            if (serie.status() === Data.SerieStatus.Finished) {
+                                finishedSeries++;
+                                difficulty += serie.difficulty();
+                            }
+                        });
+                    });
+                    return finishedSeries > 0 ? (difficulty / finishedSeries) : 0;
+                }, _this);
+                _this.displayedSet = ko.observable();
                 return _this;
             }
+            Workout.prototype.addSet = function (set) {
+                var index = this.sets().length;
+                set.parent = this;
+                set.order(index + 1);
+                this.sets.push(set);
+                if (index > 0) {
+                    this.sets()[index - 1].next(set);
+                    set.previous(this.sets()[index - 1]);
+                }
+            };
             Workout.prototype.start = function () {
-                this.uiDuration(0);
-                this.uiStartedOn(new Date());
-                if (this.sets().length > 0)
-                    this.uiStatus(WorkoutStatus.Running);
-                else
-                    stop();
-                this.updateCompletionStatus();
+                this.status(WorkoutStatus.Running);
+                this.startedOn(new Date());
+                this.duration(0);
+                // subscribe duration timer to global timer
+                this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
+                this.displayedSet = ko.observable(this.sets()[0]);
+                if (this.displayedSet())
+                    this.displayedSet().status(Data.SetStatus.Ready);
             };
             Workout.prototype.pause = function () {
-                this.uiStatus(WorkoutStatus.Paused);
+                if (this.status() === WorkoutStatus.Running) {
+                    // pause global timers
+                    RemoteTrainer.Program.instance.globalTimerPaused = true;
+                    this.status(WorkoutStatus.Paused);
+                    var activeSet = this.sets().firstOrDefault(function (set) { return set.status() === Data.SetStatus.Running || set.status() === Data.SetStatus.Ready; });
+                    if (activeSet)
+                        activeSet.pause();
+                }
             };
-            Workout.prototype.continueWorkout = function () {
-                this.uiStatus(WorkoutStatus.Running);
+            Workout.prototype.resume = function () {
+                if (this.status() === WorkoutStatus.Paused) {
+                    // resume global timers
+                    RemoteTrainer.Program.instance.globalTimerPaused = false;
+                    this.status(WorkoutStatus.Running);
+                    // serie is restarted explicitly by user (it has its own countdown timer...)
+                    // if workout was loaded in paused state, this timer was not created yet
+                    if (!this.m_durationTimer) {
+                        this.m_durationTimer = new RemoteTrainer.GlobalTimer();
+                        this.m_durationTimer.fn = this._onDurationTimer.bind(this);
+                        RemoteTrainer.Program.instance.GlobalTimer.push(this.m_durationTimer);
+                    }
+                    var pausedSet = this.sets().firstOrDefault(function (set) { return set.status() === Data.SetStatus.Paused; });
+                    if (pausedSet)
+                        pausedSet.resume(false);
+                }
             };
             Workout.prototype.stop = function () {
-                this.uiFinishedOn(new Date());
-                this.uiStatus(WorkoutStatus.Finished);
-            };
-            Workout.prototype.showPreviousSet = function () {
-                var activeSet = this.activeSet();
-                if (activeSet && activeSet.previous())
-                    this.activeSet(activeSet.previous());
-            };
-            Workout.prototype.showNextSet = function () {
-                var activeSet = this.activeSet();
-                if (activeSet && activeSet.next())
-                    this.activeSet(activeSet.next());
-            };
-            Workout.prototype.updateCompletionStatus = function () {
-                var serieCount = 0;
-                var completedCount = 0;
-                var estDurationLeft = 0;
-                this.sets().forEach(function (set) {
-                    set.series().forEach(function (serie) {
-                        serieCount++;
-                        if (serie.uiStatus() === Data.SerieStatus.Finished)
-                            completedCount++;
-                        else
-                            estDurationLeft += (serie.exercise.averageDurationPerRep * serie.reps) + 60; // 60 is average duration of the break
-                    });
-                }, this);
-                this.uiCompletion(Math.round((completedCount * 100) / serieCount));
-                this.uiEstDurationLeft(estDurationLeft);
-            };
-            Workout.prototype._updateWorkoutItems = function () {
                 var _this = this;
+                var unfinishedSet = this.sets().firstOrDefault(function (set) { return set.status() !== Data.SetStatus.Finished; });
+                if (unfinishedSet) {
+                    var confirm_1 = new RemoteTrainer.MessageBox("Do you want to complete the workout? All unfinished sets will be removed.", ["Complete"], "Cancel");
+                    confirm_1.closed.add(this, function (sender, e) { return _this._completeWorkout(); });
+                    confirm_1.show();
+                }
+                else {
+                    this._completeWorkout();
+                }
+            };
+            Workout.prototype._completeWorkout = function () {
+                RemoteTrainer.Program.instance.GlobalTimer.splice(0);
+                this.finishedOn(new Date());
+                this.status(WorkoutStatus.Finished);
                 var sets = this.sets();
-                var catsInSet = this.uiCategoriesInSet();
-                var exInSet = this.uiExercisesInSet();
-                sets.forEach(function (set) {
-                    var series = set.series();
-                    series.forEach(function (serie) {
-                        if (!catsInSet.contains(serie.exercise.category))
-                            catsInSet.push(serie.exercise.category);
-                        if (!exInSet.contains(serie.exercise))
-                            exInSet.push(serie.exercise);
-                    }, _this);
-                }, this);
-                this.uiCategoriesInSet.valueHasMutated();
-                this.uiExercisesInSet.valueHasMutated();
+                for (var i = sets.length - 1; i >= 0; i--) {
+                    var set = sets[i];
+                    if (set.status() === Data.SetStatus.Queued || set.status() === Data.SetStatus.Ready) {
+                        set.remove(false);
+                    }
+                    else if (set.status() !== Data.SetStatus.Finished) {
+                        // remove unfinished series of incomplete sets
+                        var series = set.series();
+                        for (var j = series.length - 1; j >= 0; j--) {
+                            var serie = series[j];
+                            if (serie.status() !== Data.SerieStatus.Finished)
+                                serie.remove(false);
+                        }
+                        set.status(Data.SetStatus.Finished);
+                    }
+                }
+            };
+            Workout.prototype.addNewSet = function () {
+                var _this = this;
+                var set = new Data.Set();
+                var dialog = new Data.ModifySetDialog(set);
+                dialog.closing.add(this, function (sender, e) {
+                    if (set.series().length === 0) {
+                        var alert_1 = new RemoteTrainer.MessageBox("Set cannot be empty");
+                        alert_1.show();
+                        e.cancel = true;
+                    }
+                });
+                dialog.closed.add(this, function (sender, e) {
+                    if (dialog.dialogResult) {
+                        _this.addSet(set);
+                        if ((_this.status() === WorkoutStatus.Running || _this.status() === WorkoutStatus.Paused) && (!set.previous() || set.previous().status() === Data.SetStatus.Finished))
+                            set.status(Data.SetStatus.Ready);
+                    }
+                });
+                RemoteTrainer.Program.instance.showDialog(dialog);
+            };
+            Workout.prototype._onDurationTimer = function (context) {
+                this.duration(this.duration() + 1);
             };
             return Workout;
         }(WorkoutTemplate));
         Data.Workout = Workout;
         var WorkoutStatus;
         (function (WorkoutStatus) {
-            WorkoutStatus[WorkoutStatus["Scheduled"] = 0] = "Scheduled";
             WorkoutStatus[WorkoutStatus["Ready"] = 1] = "Ready";
-            WorkoutStatus[WorkoutStatus["Running"] = 2] = "Running";
-            WorkoutStatus[WorkoutStatus["Paused"] = 3] = "Paused";
-            WorkoutStatus[WorkoutStatus["Finished"] = 4] = "Finished";
+            WorkoutStatus[WorkoutStatus["Finished"] = 2] = "Finished";
+            WorkoutStatus[WorkoutStatus["Running"] = 10000] = "Running";
+            WorkoutStatus[WorkoutStatus["Paused"] = 10001] = "Paused";
         })(WorkoutStatus = Data.WorkoutStatus || (Data.WorkoutStatus = {}));
     })(Data = RemoteTrainer.Data || (RemoteTrainer.Data = {}));
 })(RemoteTrainer || (RemoteTrainer = {}));
