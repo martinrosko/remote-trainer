@@ -78,8 +78,8 @@ var RemoteTrainer;
             JSBridgeProvider.prototype._loadWorkoutTemplate = function (workoutEntity, onLoaded) {
                 var workout = new RemoteTrainer.Data.WorkoutTemplate();
                 workout.id = workoutEntity.id;
-                workout.name = workoutEntity.properties.name;
-                workout.description = workoutEntity.properties.description;
+                workout.name(workoutEntity.properties.name);
+                workout.description(workoutEntity.properties.description);
                 // load workout sets
                 this._loadSetTemplates(workout.id, function (sets) {
                     workout.setTemplates = sets;
@@ -153,8 +153,8 @@ var RemoteTrainer;
                 fetch.execute("DynamicEntities", function (entity) {
                     var result = new RemoteTrainer.Data.Workout();
                     result.id = entity[0].id;
-                    result.name = entity[0].properties.name;
-                    result.description = entity[0].properties.comments;
+                    result.name(entity[0].properties.name);
+                    result.description(entity[0].properties.comments);
                     result.status(parseInt(entity[0].properties.statuscode));
                     if (entity[0].properties.started_on)
                         result.startedOn(new Date(entity[0].properties.actualstart));
@@ -368,7 +368,7 @@ var RemoteTrainer;
                     }
                 }, function (err) { return MobileCRM.bridge.alert("Error getting series: " + err); }, this);
             };
-            JSBridgeProvider.prototype.instantiateWorkout = function (workoutTemplate, workoutName, scheduledOn, onComplete, onCompleteScope) {
+            JSBridgeProvider.prototype.instantiateWorkout = function (workoutTemplate, workoutName, scheduledOn) {
                 var workoutEntity = new MobileCRM.DynamicEntity("workout");
                 workoutEntity.properties.name = workoutName;
                 workoutEntity.properties.scheduledstart = scheduledOn;
@@ -398,7 +398,6 @@ var RemoteTrainer;
                                 else {
                                     // create series
                                     setTemplate.serieTemplates.forEach(function (serieTemplate) {
-                                        var _this = this;
                                         var serieEntity = new MobileCRM.DynamicEntity("serie");
                                         serieEntity.properties.setid = new MobileCRM.Reference("set", this.id, "");
                                         serieEntity.properties.amount = serieTemplate.amount;
@@ -408,8 +407,9 @@ var RemoteTrainer;
                                         serieEntity.save(function (error) {
                                             if (error)
                                                 MobileCRM.bridge.alert("Error instantiating serie: " + error);
-                                            else if (--toCreate === 0)
-                                                onComplete.call(onCompleteScope || _this);
+                                            else if (--toCreate === 0) {
+                                                //onComplete.call(onCompleteScope || this);
+                                            }
                                         });
                                     }, this);
                                 }
@@ -417,6 +417,7 @@ var RemoteTrainer;
                         }, this);
                     }
                 });
+                return null;
             };
             return JSBridgeProvider;
         }());

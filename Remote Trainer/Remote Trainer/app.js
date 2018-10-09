@@ -84,19 +84,19 @@ var RemoteTrainer;
                             if (!RemoteTrainer.DEMODATA) return [3 /*break*/, 3];
                             login = new Resco.Data.WebService.SimpleLoginInfo();
                             login.url = "https://rescocrm.com";
-                            login.crmOrganization = "rohelbb";
+                            login.crmOrganization = "roheldevbb"; //"rohelbb"; //
                             login.userName = "rohel@resco.net";
-                            login.password = "1234";
+                            login.password = "P@ssw0rd"; //"1234"; //
                             this.dataProvider = new RemoteTrainer.Service.DataProvider(Resco.Data.WebService.Xrm.XrmService.connect(login));
                             return [4 /*yield*/, this.dataProvider.initialize()];
                         case 1:
                             _a.sent(); //(categories, exercises, workouts) => {
-                            return [4 /*yield*/, this.dataProvider.loadWorkout(workoutId)];
+                            return [4 /*yield*/, this.dataProvider.loadWorkout("bfa8497b-e61e-48c2-9020-bc9d4847deee")];
                         case 2:
                             workout = _a.sent();
                             this.workout = ko.observable(workout);
-                            if (workout.status() === RemoteTrainer.Data.WorkoutStatus.Running)
-                                workout.pause();
+                            //if (workout.status() === Data.WorkoutStatus.Running)
+                            //    workout.pause();
                             //MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                             //    entityForm.isDirty = true;
                             //    entityForm.form.caption = workout.name;
@@ -116,21 +116,56 @@ var RemoteTrainer;
         };
         Program.prototype._showCreateWorkoutPage = function (date) {
             var _this = this;
-            var dialog = new CreateWorkoutDialog(this.m_workoutTemplates, date);
+            var dialog = new ScheduleWorkoutDialog(this.dataProvider.workoutTemplates, date);
+            dialog.closed.add(this, function (sender, e) { return _this._scheduleDialogClosed(dialog); });
+            Program.instance.showDialog(dialog);
+        };
+        Program.prototype._scheduleDialogClosed = function (dialog) {
+            return __awaiter(this, void 0, void 0, function () {
+                var newDate, id;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!dialog.dialogResult) return [3 /*break*/, 2];
+                            newDate = new Date(dialog.date());
+                            newDate.setHours(8);
+                            return [4 /*yield*/, this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name(), newDate)];
+                        case 1:
+                            id = _a.sent();
+                            return [3 /*break*/, 2];
+                        case 2: return [2 /*return*/];
+                    }
+                });
+            });
+        };
+        Program.prototype._showModifyWorkoutPage = function (workoutName) {
+            var _this = this;
+            var workoutTemplate = this.dataProvider.workoutTemplates.firstOrDefault(function (wt) { return wt.name().startsWith(workoutName); });
+            if (!workoutTemplate)
+                workoutTemplate = new RemoteTrainer.Data.WorkoutTemplate();
+            var dialog = new RemoteTrainer.Data.ModifyWorkoutDialog(workoutTemplate);
             dialog.closed.add(this, function (sender, e) {
                 if (dialog.dialogResult) {
-                    var newDate = new Date(dialog.date());
-                    newDate.setHours(8);
-                    _this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, newDate, function () {
-                        MobileCRM.UI.EntityForm.closeWithoutSaving();
+                    workoutTemplate.name(dialog.workout().name());
+                    workoutTemplate.description(dialog.workout().description());
+                    // add new sets and series
+                    workoutTemplate.setTemplates.splice(0);
+                    dialog.workout().sets().forEach(function (set) {
+                        var setTemplate = new RemoteTrainer.Data.SetTemplate();
+                        setTemplate.name = set.name;
+                        set.series().forEach(function (serie) {
+                            var serieTemplate = new RemoteTrainer.Data.SerieTemplate();
+                            serieTemplate.amount = serie.uiAmount();
+                            serieTemplate.reps = serie.uiReps();
+                            serieTemplate.exercise = serie.exercise;
+                            setTemplate.addSerie(serieTemplate);
+                        }, _this);
+                        workoutTemplate.addSet(setTemplate);
                     });
-                }
-                else {
-                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                    _this.dataProvider.updateWorkoutTemplate(workoutTemplate);
                 }
             });
             Program.instance.showDialog(dialog);
-            ko.applyBindings(this);
         };
         Program.prototype.clearTimer = function (timer) {
             var timerIndex = Program.instance.GlobalTimer.indexOf(timer);
@@ -199,27 +234,34 @@ var RemoteTrainer;
         return Dialog;
     }());
     RemoteTrainer.Dialog = Dialog;
-    var CreateWorkoutDialog = /** @class */ (function (_super) {
-        __extends(CreateWorkoutDialog, _super);
-        function CreateWorkoutDialog(workoutTemplates, initDate) {
+    var ScheduleWorkoutDialog = /** @class */ (function (_super) {
+        __extends(ScheduleWorkoutDialog, _super);
+        function ScheduleWorkoutDialog(workoutTemplates, initDate) {
             var _this = _super.call(this) || this;
             _this.name("Schedule Workout");
-            _this.uiContentTemplateName("tmplCreateWorkoutDialog");
-            _this.workoutTemplates = workoutTemplates;
-            _this.selectedTemplate = ko.observable(_this.workoutTemplates && _this.workoutTemplates.length > 0 ? _this.workoutTemplates[0] : undefined);
+            _this.uiContentTemplateName("tmplScheduleWorkoutDialog");
+            _this.workoutTemplates = workoutTemplates ? workoutTemplates : [];
+            //var newWorkoutTemplate = new Data.WorkoutTemplate();
+            //newWorkoutTemplate.name = "<New Workout>";
+            //this.workoutTemplates.splice(0, 0, newWorkoutTemplate);
+            _this.selectedTemplate = ko.observable(); //this.workoutTemplates && this.workoutTemplates.length > 0 ? this.workoutTemplates[0] : undefined);
+            _this.workout = ko.observable();
             _this.selectWorkout = new Resco.Controls.SelectBox();
             _this.selectWorkout.itemLabel("name");
             _this.selectWorkout.items(workoutTemplates);
+            _this.selectWorkout.selectedItem(_this.selectedTemplate());
             _this.selectWorkout.selecteItemChanged.add(_this, _this._selectWorkoutItemChanged);
+            _this.selectWorkout.selectText("Select Workout...");
             _this.date = ko.observable(initDate);
             return _this;
         }
-        CreateWorkoutDialog.prototype._selectWorkoutItemChanged = function (sender, args) {
+        ScheduleWorkoutDialog.prototype._selectWorkoutItemChanged = function (sender, args) {
             this.selectedTemplate(args.item);
+            this.workout(new RemoteTrainer.Data.Workout(this.selectedTemplate()));
         };
-        return CreateWorkoutDialog;
+        return ScheduleWorkoutDialog;
     }(Dialog));
-    RemoteTrainer.CreateWorkoutDialog = CreateWorkoutDialog;
+    RemoteTrainer.ScheduleWorkoutDialog = ScheduleWorkoutDialog;
     var MessageBoxClosedEventArgs = /** @class */ (function (_super) {
         __extends(MessageBoxClosedEventArgs, _super);
         function MessageBoxClosedEventArgs(button) {

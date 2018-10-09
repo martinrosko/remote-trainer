@@ -15,6 +15,8 @@ var RemoteTrainer;
         var WorkoutTemplate = /** @class */ (function () {
             function WorkoutTemplate() {
                 this.setTemplates = [];
+                this.name = ko.observable();
+                this.description = ko.observable();
             }
             WorkoutTemplate.prototype.addSet = function (set) {
                 this.setTemplates.push(set);
@@ -22,8 +24,8 @@ var RemoteTrainer;
                 set.order(this.setTemplates.length);
             };
             WorkoutTemplate.prototype.copyTo = function (dst) {
-                dst.name = this.name;
-                dst.description = this.description;
+                dst.name(this.name());
+                dst.description(this.description());
             };
             return WorkoutTemplate;
         }());
@@ -189,12 +191,33 @@ var RemoteTrainer;
                 });
                 RemoteTrainer.Program.instance.showDialog(dialog);
             };
+            Workout.prototype.onSortUpdated = function (event, droppedSet) {
+                var sets = this.sets();
+                sets.forEach(function (set, index) {
+                    set.order(index + 1);
+                    set.previous(index > 0 ? sets[index - 1] : null);
+                    set.next(index < sets.length - 1 ? sets[index + 1] : null);
+                });
+            };
             Workout.prototype._onDurationTimer = function (context) {
                 this.duration(this.duration() + 1);
             };
             return Workout;
         }(WorkoutTemplate));
         Data.Workout = Workout;
+        var ModifyWorkoutDialog = /** @class */ (function (_super) {
+            __extends(ModifyWorkoutDialog, _super);
+            function ModifyWorkoutDialog(workoutTemplate) {
+                var _this = _super.call(this) || this;
+                _this.name("Modify Workout");
+                _this.uiContentTemplateName("tmplModifyWorkoutTemplateDialog");
+                _this.selectedTemplate = workoutTemplate;
+                _this.workout = ko.observable(new Data.Workout(_this.selectedTemplate));
+                return _this;
+            }
+            return ModifyWorkoutDialog;
+        }(RemoteTrainer.Dialog));
+        Data.ModifyWorkoutDialog = ModifyWorkoutDialog;
         var WorkoutStatus;
         (function (WorkoutStatus) {
             WorkoutStatus[WorkoutStatus["Ready"] = 1] = "Ready";

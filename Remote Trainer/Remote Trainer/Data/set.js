@@ -17,7 +17,7 @@ var RemoteTrainer;
                 this.serieTemplates = [];
                 this.order = ko.observable();
                 if (RemoteTrainer.DEMODATA)
-                    this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
+                    this.id = Resco.createGuid(); //Math.floor(Math.random() * Math.floor(1000)).toString();
             }
             SetTemplate.prototype.addSerie = function (serie) {
                 this.serieTemplates.push(serie);
@@ -208,6 +208,14 @@ var RemoteTrainer;
                     }
                 }
             };
+            Set.prototype.onSortUpdated = function (event, droppedSerie) {
+                var series = this.series();
+                series.forEach(function (serie, index) {
+                    serie.order(index + 1);
+                    serie.previous(index > 0 ? series[index - 1] : null);
+                    serie.next(index < series.length - 1 ? series[index + 1] : null);
+                });
+            };
             Set.prototype.remove = function (bAskConfirm) {
                 var _this = this;
                 if (bAskConfirm === void 0) { bAskConfirm = true; }
@@ -296,7 +304,7 @@ var RemoteTrainer;
             };
             Set.prototype.showAddSerieDialog = function () {
                 var _this = this;
-                var dialog = new AddSerieDialog(RemoteTrainer.Program.instance.categories, RemoteTrainer.Program.instance.exercises);
+                var dialog = new AddSerieDialog(RemoteTrainer.Program.instance.dataProvider.categories, RemoteTrainer.Program.instance.dataProvider.exercises);
                 dialog.closed.add(this, function (sender, e) {
                     if (dialog.dialogResult) {
                         var serie = new Data.Serie();

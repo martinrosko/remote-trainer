@@ -9,8 +9,8 @@
         constructor() {
             this.serieTemplates = [];
             this.order = ko.observable<number>();
-            if (DEMODATA)
-                this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
+			if (DEMODATA)
+				this.id = Resco.createGuid();//Math.floor(Math.random() * Math.floor(1000)).toString();
         }
 
         public addSerie(serie: SerieTemplate): void {
@@ -256,6 +256,15 @@
             }
         }
 
+		public onSortUpdated(event: Event, droppedSerie: Set): void {
+			var series = this.series();
+			series.forEach((serie, index) => {
+				serie.order(index + 1);
+				serie.previous(index > 0 ? series[index - 1] : null);
+				serie.next(index < series.length - 1 ? series[index + 1] : null);
+			});
+		}
+
         public remove(bAskConfirm: boolean = true): void {
             if (bAskConfirm) {
                 let confirm = new MessageBox("Do you want to remove the entire set?", ["Yes"], "No");
@@ -355,7 +364,7 @@
         }
 
         public showAddSerieDialog(): void {
-            let dialog = new AddSerieDialog(Program.instance.categories, Program.instance.exercises);
+            let dialog = new AddSerieDialog(Program.instance.dataProvider.categories, Program.instance.dataProvider.exercises);
             dialog.closed.add(this, (sender, e) => {
                 if (dialog.dialogResult) {
                     let serie = new Serie();

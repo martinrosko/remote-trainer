@@ -13,7 +13,7 @@
 		buildChangeStatusRequest: (entityName: string, id: string, status: number, state: number, stateName: string, extendedInfo: Resco.Dictionary<string, any>) => any;
 		buildChangeOwnerRequest: (entityName: string, id: string, ownerId: string, ownerIdTarget: string) => any;
 
-		create: (entity: ICrmWritableEntity) => Promise<string>;
+		create: (entity: ICrmWritableEntity) => Promise<Guid>;
 		update: (entity: ICrmWritableEntity) => Promise<boolean>;
 		delete: (entityName: string, id: string) => Promise<boolean>;
 		updateManyToManyReference: (entityName: string, relationshipName: string, create: boolean, attribute1: string, k1: string, target1: string, attribute2: string, k2: string, target2: string) => void;
@@ -87,10 +87,10 @@
 		public abstract buildChangeOwnerRequest(entityName: string, id: string, ownerId: string, ownerIdTarget: string): any;
 		public abstract createWritableEntity(entityName: string, initializer?: any): ICrmWritableEntity;
 
-		public async create(entity: ICrmWritableEntity): Promise<string> {
+		public async create(entity: ICrmWritableEntity): Promise<Guid> {
 			var request = this.buildCreateRequest(entity);
 			var result = await this.executeRequest(request);
-			return result;
+			return <Guid>result;
 		}
 
 		public async update(entity: ICrmWritableEntity): Promise<boolean> {

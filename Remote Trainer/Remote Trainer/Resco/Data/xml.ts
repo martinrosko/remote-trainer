@@ -5,7 +5,7 @@
 				b64 = b64.substr(4);
 			var parser = new DOMParser();
 			var xmlDoc;
-			if(isUnicode)
+			if (isUnicode)
 				xmlDoc = parser.parseFromString(b64.fromBase64(), "text/xml");
 			else
 				xmlDoc = parser.parseFromString(atob(b64), "text/xml");
@@ -13,7 +13,7 @@
 			return xmlDoc;
 		}
 
-		static getAttribute(parent: Node, localName: string): string {
+		static getAttribute(parent: any, localName: string): string {
 			if (parent.hasAttributes && parent.hasAttributes()) {
 				for (var i = 0; i < parent.attributes.length; i++) {
 					var oAttrib = parent.attributes.item(i);
@@ -23,7 +23,7 @@
 			}
 			return null;
 		}
-        static writeAttribute(element: Node, name: string, ns: string, value: string, nsMap?: Resco.Dictionary<string, string[]>) {
+		static writeAttribute(element: Node, name: string, ns: string, value: string, nsMap?: Resco.Dictionary<string, string[]>) {
 			var doc = element.ownerDocument;
 			if (ns && nsMap && nsMap.containsKey(ns)) {
 				var prefixes = nsMap.getValue(ns);
@@ -32,24 +32,24 @@
 					ns = null;
 				}
 			}
-            var attr = (ns === null) ? doc.createAttribute(name) : doc.createAttributeNS(ns, name);
-            attr.value = value;
-            element.attributes.setNamedItemNS(attr);
-            return attr;
-        }
-        static writeElement(parent: Node, name: string, ns: string, textValue?: string): Node {
+			var attr = (ns === null) ? doc.createAttribute(name) : doc.createAttributeNS(ns, name);
+			attr.value = value;
+			(<any>element).attributes.setNamedItemNS(attr);
+			return attr;
+		}
+		static writeElement(parent: Node, name: string, ns: string, textValue?: string): Node {
 			var doc = parent.ownerDocument;
 			var e = ns === null ? doc.createElement(name) : doc.createElementNS(ns, name);
-            parent.appendChild(e);
+			parent.appendChild(e);
 
-            if (textValue !== null && textValue !== undefined) {
-                var textNode = doc.createTextNode(textValue);
-                e.appendChild(textNode);
-            }
-            return e;
-        }
-        static writeElementString(parent: Node, textValue: string) {
-            var textNode = parent.ownerDocument.createTextNode(textValue);
+			if (textValue !== null && textValue !== undefined) {
+				var textNode = doc.createTextNode(textValue);
+				e.appendChild(textNode);
+			}
+			return e;
+		}
+		static writeElementString(parent: Node, textValue: string) {
+			var textNode = parent.ownerDocument.createTextNode(textValue);
 			parent.appendChild(textNode);
 		}
 		static findXmlElementValue(parent: Node, path: string[]): string {
@@ -123,5 +123,5 @@
 			}
 			return arr;
 		}
-    }
+	}
 }

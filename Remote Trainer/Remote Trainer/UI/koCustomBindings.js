@@ -12,6 +12,7 @@ ko.bindingHandlers.datepicker = {
             onSelect: function (date) {
                 value(date);
             },
+            dateFormat: "d.MM yy (DD)",
             minDate: 0
         });
         if (value())

@@ -1,8 +1,8 @@
 ﻿module RemoteTrainer.Service {
     export class DataProvider implements IDataProvider {
-        private categories: Data.Category[];
-        private exercises: Data.Exercise[];
-        private workoutTemplates: Data.WorkoutTemplate[];
+		public categories: Data.Category[];
+		public exercises: Data.Exercise[];
+        public workoutTemplates: Data.WorkoutTemplate[];
         private m_service: Resco.Data.WebService.ICrmService;
 
         constructor(service: Resco.Data.WebService.ICrmService) {
@@ -35,7 +35,7 @@
                 result.push(category);
             }, this);
 
-            return result;
+            return result.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         private async _loadExercises(): Promise<Data.Exercise[]> {
@@ -62,7 +62,7 @@
                 result.push(exercise);
             }
 
-            return result;
+			return result.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         private async _loadWorkoutTemplates(): Promise<Data.WorkoutTemplate[]> {
@@ -72,13 +72,13 @@
             for (var serverWorkoutTemplate of serverWorkoutTemplates) {
                 let workoutTemplate = new Data.WorkoutTemplate();
                 workoutTemplate.id = serverWorkoutTemplate.id.Value;
-                workoutTemplate.name = serverWorkoutTemplate.attributes["name"];
-                workoutTemplate.description = serverWorkoutTemplate.attributes["description"];
+                workoutTemplate.name(serverWorkoutTemplate.attributes["name"]);
+                workoutTemplate.description(serverWorkoutTemplate.attributes["description"]);
                 workoutTemplate.setTemplates = await this._loadSetTemplates(workoutTemplate);
                 result.push(workoutTemplate);
             };
 
-            return result;
+			return result.sort((a, b) => a.name().localeCompare(b.name()));
         }
 
         private async _loadSetTemplates(workoutTemplate: Data.WorkoutTemplate): Promise<Data.SetTemplate[]> {
@@ -112,9 +112,9 @@
                 var order = <Resco.Data.Integer>serverSerieTemplate.attributes["order"];
                 serieTemplate.order(order ? order.Value : undefined);
                 var amount = <Resco.Data.Integer>serverSerieTemplate.attributes["amount"];
-                serieTemplate.order(amount ? amount.Value : undefined);
+                serieTemplate.amount = amount ? amount.Value : 0;
                 var reps = <Resco.Data.Integer>serverSerieTemplate.attributes["reps"];
-                serieTemplate.order(reps ? reps.Value : undefined);
+                serieTemplate.reps = reps ? reps.Value : undefined;
                 serieTemplate.exercise = this.exercises.firstOrDefault(exercise => exercise.id === (<Resco.Data.WebService.EntityReference>serverSerieTemplate.attributes["exercise"]).Id.Value);
                 serieTemplate.parent = setTemplate;
                 result.push(serieTemplate);
@@ -134,8 +134,8 @@
                 var serverWorkout = serverWorkouts[0];
                 var workout = new Data.Workout();
                 workout.id = serverWorkout.id.Value;
-                workout.name = serverWorkout.attributes["name"];
-                workout.description = serverWorkout.attributes["description"];
+                workout.name(serverWorkout.attributes["name"]);
+                workout.description(serverWorkout.attributes["description"]);
                 workout.status((<Resco.Data.Integer>serverWorkout.attributes["statuscode"]).Value);
                 var startedOn = <Resco.Data.DateTime>serverWorkout.attributes["actualstart"];
                 workout.startedOn(startedOn ? startedOn.Value : undefined);
@@ -183,23 +183,23 @@
                 var amount = <Resco.Data.Integer>serverSerie.attributes["amount"];
                 serie.amount = amount ? amount.Value : undefined;
                 var actualAmount = <Resco.Data.Integer>serverSerie.attributes["actual_amount"];
-                serie.uiAmount(actualAmount ? actualAmount.Value : undefined);
+				serie.uiAmount(actualAmount ? actualAmount.Value : serie.amount);
 
                 var reps = <Resco.Data.Integer>serverSerie.attributes["reps"];
                 serie.reps = reps ? reps.Value : undefined;
                 var actualReps = <Resco.Data.Integer>serverSerie.attributes["actual_reps"];
-                serie.uiReps(actualReps ? actualReps.Value : undefined);
+                serie.uiReps(actualReps ? actualReps.Value : serie.reps);
 
                 var startedOn = <Resco.Data.DateTime>serverSerie.attributes["started_on"];
                 serie.uiStartedOn(startedOn ? startedOn.Value : undefined);
                 var finishedOn = <Resco.Data.DateTime>serverSerie.attributes["finished_on"];
                 serie.uiFinishedOn(finishedOn ? finishedOn.Value : undefined);
                 var duration = <Resco.Data.Integer>serverSerie.attributes["duration"];
-                serie.duration(duration ? duration.Value : undefined);
+                serie.duration(duration ? duration.Value : 0);
 
                 serie.status((<Resco.Data.Integer>serverSerie.attributes["statuscode"]).Value);
                 var difficulty = <Resco.Data.Integer>serverSerie.attributes["difficulty"];
-                serie.uiDifficulty(difficulty ? Data.Serie.difficulties[difficulty.Value - 1] : "");
+				serie.uiDifficulty(difficulty ? Data.Serie.difficulties[difficulty.Value - 1] : Data.Serie.difficulties[3]);
 
                 serie.exercise = this.exercises.firstOrDefault(exercise => exercise.id === (<Resco.Data.WebService.EntityReference>serverSerie.attributes["exercise"]).Id.Value);
 
@@ -349,56 +349,74 @@
 			return result;
         }
 
-        public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date, onComplete: () => void, onCompleteScope?: any): void {
-            let workoutEntity = new MobileCRM.DynamicEntity("workout");
-            workoutEntity.properties.name = workoutName;
-            workoutEntity.properties.scheduledstart = scheduledOn;
-            workoutEntity.properties.scheduledend = moment(scheduledOn).add(2, "hours").toDate();
-            workoutEntity.properties.description = workoutTemplate.description;
+        public async instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date): Promise<Resco.Data.Guid> {
+			var workoutEntity = this.m_service.createWritableEntity("workout");
+			workoutEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, workoutName);
+			workoutEntity.addTypeValue("scheduledstart", Resco.Data.WebService.CrmType.DateTime, scheduledOn);
+			workoutEntity.addTypeValue("scheduledend", Resco.Data.WebService.CrmType.DateTime, moment(scheduledOn).add(2, "hours").toDate());
+			workoutEntity.addTypeValue("description", Resco.Data.WebService.CrmType.String, workoutTemplate.description());
 
-            workoutEntity.save(function(error) {
-                // note: scope (this) is newlycreated dynamic entity (workout)
-                if (error) {
-                    MobileCRM.bridge.alert("Error instantiating workout: " + error);
-                }
-                else {
-                    // create sets
-                    var toCreate: number = 0;
+			var workoutId = await this.m_service.create(workoutEntity);
 
-                    workoutTemplate.setTemplates.forEach(setTempalte => {
-                        toCreate += setTempalte.serieTemplates.length;
-                    });
-                    workoutTemplate.setTemplates.forEach(function(setTemplate) {
-                        let setEntity = new MobileCRM.DynamicEntity("set");
-                        setEntity.properties.workoutid = new MobileCRM.Reference("workout", (<MobileCRM.DynamicEntity><any>this).id, "");
-                        setEntity.properties.name = setTemplate.name;
-                        setEntity.properties.order = setTemplate.order();
-                        setEntity.save(function(error) {
-                            // note: scope (this) is newly created dynamic entity (set)
-                            if (error) {
-                                MobileCRM.bridge.alert("Error instantiating set: " + error);
-                            }
-                            else {
-                                // create series
-                                setTemplate.serieTemplates.forEach(function(serieTemplate) {
-                                    let serieEntity = new MobileCRM.DynamicEntity("serie");
-                                    serieEntity.properties.setid = new MobileCRM.Reference("set", (<MobileCRM.DynamicEntity><any>this).id, "");
-                                    serieEntity.properties.amount = serieTemplate.amount;
-                                    serieEntity.properties.exercise = new MobileCRM.Reference("exercise", serieTemplate.exercise.id, "");
-                                    serieEntity.properties.order = serieTemplate.order();
-                                    serieEntity.properties.reps = serieTemplate.reps;
-                                    serieEntity.save(error => {
-                                        if (error)
-                                            MobileCRM.bridge.alert("Error instantiating serie: " + error);
-                                        else if (--toCreate === 0)
-                                            onComplete.call(onCompleteScope || this);
-                                    });                                   
-                                }, this);
-                            }
-                        });
-                    }, this);
-                }
-            });
-        }
+			for (var setTemplate of workoutTemplate.setTemplates) {
+				var setEntity = this.m_service.createWritableEntity("set");
+				setEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, setTemplate.name);
+				setEntity.addTypeValue("order", Resco.Data.WebService.CrmType.Integer, setTemplate.order());
+				setEntity.addTypeValue("workoutid", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("workout", workoutId, ""));
+
+				var setId = await this.m_service.create(setEntity);
+
+				for (var serieTemplate of setTemplate.serieTemplates) {
+					var serieEntity = this.m_service.createWritableEntity("serie");
+					serieEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, serieTemplate.exercise.name + " - " + serieTemplate.order());
+					serieEntity.addTypeValue("order", Resco.Data.WebService.CrmType.Integer, serieTemplate.order());
+					serieEntity.addTypeValue("amount", Resco.Data.WebService.CrmType.Integer, serieTemplate.amount);
+					serieEntity.addTypeValue("reps", Resco.Data.WebService.CrmType.Integer, serieTemplate.reps);
+					serieEntity.addTypeValue("setid", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("set", setId, ""));
+					serieEntity.addTypeValue("exercise", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("exercise", new Resco.Data.Guid(serieTemplate.exercise.id), ""));
+					await this.m_service.create(serieEntity);
+				}
+
+			}
+			return workoutId;
+		}
+
+		public async updateWorkoutTemplate(workoutTemplate: Data.WorkoutTemplate): Promise<void> {
+			if (workoutTemplate.id)
+				await this.m_service.delete("workout_template", workoutTemplate.id);			
+			else
+				workoutTemplate.id = Resco.createGuid();
+
+			var requests = [];
+			var writableEntity = this.m_service.createWritableEntity("workout_template");
+			writableEntity.addTypeValue("id", Resco.Data.WebService.CrmType.PrimaryKey, workoutTemplate.id);
+			writableEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, workoutTemplate.name());
+			writableEntity.addTypeValue("description", Resco.Data.WebService.CrmType.String, workoutTemplate.description());
+			requests.push(this.m_service.buildCreateRequest(writableEntity));
+
+			workoutTemplate.setTemplates.forEach(setTemplate => {
+				writableEntity = this.m_service.createWritableEntity("set_template");
+				setTemplate.id = Resco.createGuid();
+				writableEntity.addTypeValue("id", Resco.Data.WebService.CrmType.PrimaryKey, setTemplate.id);
+				setTemplate.name = workoutTemplate.name() + " - " + setTemplate.order()
+				writableEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, setTemplate.name);
+				writableEntity.addTypeValue("order", Resco.Data.WebService.CrmType.Integer, setTemplate.order());
+				writableEntity.addTypeValue("workout", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("workout_template", new Resco.Data.Guid(workoutTemplate.id), null));
+				requests.push(this.m_service.buildCreateRequest(writableEntity));
+
+				setTemplate.serieTemplates.forEach(serieTemplate => {
+					writableEntity = this.m_service.createWritableEntity("serie_template");
+					writableEntity.addTypeValue("name", Resco.Data.WebService.CrmType.String, setTemplate.name + " - " + serieTemplate.order());
+					writableEntity.addTypeValue("amount", Resco.Data.WebService.CrmType.Integer, serieTemplate.amount);
+					writableEntity.addTypeValue("reps", Resco.Data.WebService.CrmType.Integer, serieTemplate.reps);
+					writableEntity.addTypeValue("order", Resco.Data.WebService.CrmType.Integer, serieTemplate.order());
+					writableEntity.addTypeValue("exercise", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("exercise", new Resco.Data.Guid(serieTemplate.exercise.id), serieTemplate.exercise.name));
+					writableEntity.addTypeValue("setid", Resco.Data.WebService.CrmType.Lookup, new Resco.Data.WebService.EntityReference("set_template", new Resco.Data.Guid(setTemplate.id), null));
+					requests.push(this.m_service.buildCreateRequest(writableEntity));
+				}, this);
+			}, this);
+
+			await this.m_service.executeMultiple(requests);
+		}
     }
 }

@@ -1,11 +1,13 @@
 ﻿module Resco.Data.WebService.Crm2011 {
 	export class XrmSerializer {
 		public deserializeCrmPrimitiveTypes: boolean;
+		public encodeDecodeXml: boolean;
 
 		public sendPicklistNull: boolean;
 
-		public constructor() {
+		public constructor(encodeDecodeXml: boolean = false) {
 			this.sendPicklistNull = true;
+			this.encodeDecodeXml = encodeDecodeXml;
 		}
 
 		public deserialize(parent: Node, target: any, decomposeReference: boolean = false) {
@@ -53,7 +55,7 @@
 				var valueType = valueType.substr(valueType.indexOf(':') + 1);
 				switch (valueType) {
 					case "string":
-						value = child.textContent.decodeXML();
+						value = this.encodeDecodeXml ? child.textContent.decodeXML() : child.textContent;
 						break;
 					case "boolean":
 						value = child.textContent === "true";

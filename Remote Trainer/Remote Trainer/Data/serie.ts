@@ -12,8 +12,8 @@
             this.reps = reps;
             this.amount = amount;
             this.order = ko.observable<number>();
-            if (DEMODATA)
-                this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
+			if (DEMODATA)
+				this.id = Resco.createGuid();
         }
 
         public copyTo(dst: SerieTemplate): void {
@@ -64,14 +64,14 @@
             if (template)
                 template.copyTo(this);
 
-            this.uiAmount = ko.observable<number>(template ? template.amount : 0);
+            this.uiAmount = ko.observable<number>(template ? template.amount : undefined);
 
             this.uiAmountHasFocus = ko.observable<boolean>(false);
             this.uiAmountHasFocus.subscribe(hasFocus => {
                 // FIXME: validate value
             }, this);
 
-            this.uiReps = ko.observable<number>(template ? template.reps : 0);
+            this.uiReps = ko.observable<number>(template ? template.reps : undefined);
 
             this.uiRepsHasFocus = ko.observable<boolean>(false);
             this.uiRepsHasFocus.subscribe(hasFocus => {

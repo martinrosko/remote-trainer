@@ -36,7 +36,9 @@
     <script src="Controls/selectBox.js"></script>
     <script src="Libraries/jquery-1.7.1.min.js"></script>
     <script src="Libraries/jquery-ui.min.js"></script>
+    <script src="Libraries/sortable.js"></script>
     <script src="Libraries/knockout-3.4.2.js"></script>
+    <script src="Libraries/knockout.sortable.js"></script>
     <script src="Libraries/moment-2.19.1.min.js"></script>
     <script src="Libraries/es6_shim_min.js"></script>
     <script src="Libraries/JSBridge.js"></script>
@@ -101,6 +103,7 @@
 	</script>
 
 	<script id="tmplWorkoutDetails" type="text/htm">
+		<!-- ko if: workout() -->
 		<div style="padding: 10px">
 			<!-- ko foreach: workout().sets -->
 			<!-- ko if: order() > 0 -->
@@ -156,6 +159,7 @@
 			</div>
 			<!-- /ko -->
 		</div>
+		<!-- /ko -->
 	</script>
 
 	<script id="tmplSetDetails" type="text/html">
@@ -260,11 +264,11 @@
 
 	<script id="tmplOptionsSerieComplete" type="text/html">
 		<div class="cell" style="flex: 1 1; text-align: center; background-color: white; border-right: solid 1px black; display: flex; flex-direction: row">
-			<div class="difficultyButton"><input type="radio" value="Very Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Very Easy</div>
-			<div class="difficultyButton"><input type="radio" value="Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Easy</div>
-			<div class="difficultyButton"><input type="radio" value="Medium" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Medium</div>
-			<div class="difficultyButton"><input type="radio" value="Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Hard</div>
-			<div class="difficultyButton"><input type="radio" value="Very Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order }" /><br />Very Hard</div>
+			<div class="difficultyButton"><input type="radio" value="Very Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order() }" /><br />Very Easy</div>
+			<div class="difficultyButton"><input type="radio" value="Easy" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order() }" /><br />Easy</div>
+			<div class="difficultyButton"><input type="radio" value="Medium" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order() }" /><br />Medium</div>
+			<div class="difficultyButton"><input type="radio" value="Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order() }" /><br />Hard</div>
+			<div class="difficultyButton"><input type="radio" value="Very Hard" data-bind="checked: uiDifficulty, attr: { name: 'difficulty' + order() }" /><br />Very Hard</div>
 		</div>
 	</script>
 
@@ -281,6 +285,7 @@
 	</script>
 
 	<script id="tmplOverview" type="text/html">
+		<!-- ko if: workout() -->
 		<!-- ko with: workout() -->
 		<div style="height: 100%; width: 100%; display: flex; align-items: center; padding: 20px">
 			<div style="width: 100%; height: 325px; border: solid 1px black; padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.75); box-shadow: 10px 15px 2px rgba(0,0,0,0.55)">
@@ -370,6 +375,7 @@
 			</div>
 		</div>
 		<!-- /ko -->
+		<!-- /ko -->
 	</script>
 
 	<script id="tmplDialog" type="text/html">
@@ -391,41 +397,39 @@
 
 	<script id="tmplModifySetDialog" type="text/html">
 		<!-- ko with: modifiedSet -->
-		<!-- ko foreach: series() -->
-		<div class="setDetail" style="margin: 10px; margin-bottom: 0px">
-			<div style="display: flex; flex-direction: row; border-bottom: solid 1px black" data-bind="style: { backgroundColor: exercise.category.colorDark }">
-				<div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: exercise.name" />
-				<!-- ko if: status() !== RemoteTrainer.Data.SerieStatus.Running && status() !== RemoteTrainer.Data.SerieStatus.Finished && status() !== RemoteTrainer.Data.SerieStatus.Paused -->
-				<div data-bind="click: moveDown, style: {backgroundImage: next() ? 'url(\'Images/down_arrow.png\')' : 'url(\'Images/down_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
-				<div data-bind="click: moveUp, style: {backgroundImage: previous() && canMoveUp() ? 'url(\'Images/up_arrow.png\')' : 'url(\'Images/up_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
-				<div data-bind="click: remove" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/trash.png'); background-position: center; background-repeat: no-repeat; background-color: #ffdddd; background-size: 16px; cursor: pointer" />
-				<!-- /ko -->
-			</div>
-			<div class="setinfo" style="display: flex; flex-direction: row; background: white; height: 45px">
-				<div style="flex: 1; padding-left: 5px">
-					<!-- ko if: $parent.status() !== RemoteTrainer.Data.SetStatus.Finished -->
-					<span class="highlight link" data-bind="click: addClone">Clone</span>
-					<!-- /ko -->
+		<div data-bind="sortable: { foreach: series, options: { onEnd: onSortUpdated.bind($data), handle: '.setDetail' } }">
+			<div class="setDetail" style="margin: 10px; margin-bottom: 0px">
+				<div style="display: flex; flex-direction: row; border-bottom: solid 1px black" data-bind="style: { backgroundColor: exercise.category.colorDark }">
+					<div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: exercise.name" />
+					<div data-bind="click: moveDown, style: {backgroundImage: next() ? 'url(\'Images/down_arrow.png\')' : 'url(\'Images/down_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+					<div data-bind="click: moveUp, style: {backgroundImage: previous() && canMoveUp() ? 'url(\'Images/up_arrow.png\')' : 'url(\'Images/up_arrow_disabled.png\')' }" style="border-left: dashed 1px black; width: 50px; background-position: center; background-repeat: no-repeat; background-color: #eeeeee; background-size: 16px; cursor: pointer" />
+					<div data-bind="click: remove" style="border-left: dashed 1px black; width: 50px; background-image: url('Images/trash.png'); background-position: center; background-repeat: no-repeat; background-color: #ffdddd; background-size: 16px; cursor: pointer" />
 				</div>
-				<div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiAmountHasFocus() ? 0 : 5) + 'px' }, click: onAmountClicked">
-					<!-- ko if: !uiAmountHasFocus() -->
-					<span class="bigDigit" data-bind="text: uiAmount" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
-					<!-- /ko -->
-					<!-- ko if: uiAmountHasFocus() -->
-					<input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiAmount, hasFocus: uiAmountHasFocus" />
-					<!-- /ko -->
-				</div>
-				<div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiRepsHasFocus() ? 0 : 5) + 'px' }, click: onRepsClicked">
-					<!-- ko if: !uiRepsHasFocus() -->
-					<span class="bigDigit" data-bind="text: uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
-					<!-- /ko -->
-					<!-- ko if: uiRepsHasFocus() -->
-					<input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiReps, hasFocus: uiRepsHasFocus" />
-					<!-- /ko -->
+				<div class="setinfo" style="display: flex; flex-direction: row; background: white; height: 45px">
+					<div style="flex: 1; padding-left: 5px">
+						<!-- ko if: $parent.status() !== RemoteTrainer.Data.SetStatus.Finished -->
+						<span class="highlight link" data-bind="click: addClone">Clone</span>
+						<!-- /ko -->
+					</div>
+					<div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiAmountHasFocus() ? 0 : 5) + 'px' }, click: onAmountClicked">
+						<!-- ko if: !uiAmountHasFocus() -->
+						<span class="bigDigit" data-bind="text: uiAmount" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfAmount[exercise.uoa]" />
+						<!-- /ko -->
+						<!-- ko if: uiAmountHasFocus() -->
+						<input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiAmount, hasFocus: uiAmountHasFocus" />
+						<!-- /ko -->
+					</div>
+					<div class="cell button" style="border-left: dashed 1px black" data-bind="style: { backgroundColor: exercise.category.colorLight, padding: (uiRepsHasFocus() ? 0 : 5) + 'px' }, click: onRepsClicked">
+						<!-- ko if: !uiRepsHasFocus() -->
+						<span class="bigDigit" data-bind="text: uiReps" /><span class="annotation" data-bind="text: RemoteTrainer.Data.UnitOfRepetitions[exercise.uor]" />
+						<!-- /ko -->
+						<!-- ko if: uiRepsHasFocus() -->
+						<input type="number" style="width: 100%; height: 100%; border: 0px; box-sizing: border-box; font-size: 35px; font-weight: bold; text-align: center" data-bind="value: uiReps, hasFocus: uiRepsHasFocus" />
+						<!-- /ko -->
+					</div>
 				</div>
 			</div>
 		</div>
-		<!-- /ko -->
 		<!-- ko if: status() !== RemoteTrainer.Data.SetStatus.Finished -->
 		<div class="setDetail" data-bind="click: showAddSerieDialog" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
 			<img src="Images/add.png" style="height: 16px" /> Add Serie
@@ -444,12 +448,68 @@
 		</div>
 	</script>
 
-	<script id="tmplCreateWorkoutDialog" type="text/html">
-		<div style="padding: 10px">
+	<script id="tmplScheduleWorkoutDialog" type="text/html">
+		<div style="padding: 15px">
+			<input data-bind="datepicker: date" style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 12px; box-shadow: 5px 5px 1px rgba(0,0,0,0.55); border: solid 1px black; cursor: pointer; font-weight: bold" />
+			<br />
+			<br />
 			<!-- ko template: { name: 'tmplSelectBox', data: selectWorkout } --><!-- /ko -->
+			<!-- ko if: workout() -->
+			<!-- ko with: workout() -->
+			<div style="padding-top: 15px">
+				<!-- ko foreach: sets -->
+				<div class="setDetail">
+					<!-- ko foreach: exercises -->
+					<div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark, borderBottomWidth: $index() === $parent.exercises().length - 1 ? '0px' : '1px' }">
+						<div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
+						<!-- ko foreach: $parent.series -->
+						<!-- ko if: exercise === $parent -->
+						<div style="border-left: solid 1px black; padding: 5px; width: 50px; text-align: center" data-bind="
+									style: { backgroundColor: $parent.category.colorLight },
+									text: (uiAmount() !== undefined ? uiAmount() : '') + (uiAmount() !== undefined && uiReps() !== undefined ? '/' : '') + (uiReps() !== undefined ? uiReps() : '')" />
+						<!-- /ko -->
+						<!-- /ko -->
+					</div>
+					<!-- /ko -->
+				</div>
+				<br />
+				<!-- /ko -->
+			</div>			
+			<!-- /ko -->
+			<!-- /ko -->
+		</div>
+	</script>
+
+	<script id="tmplModifyWorkoutTemplateDialog" type="text/html">		
+		<div style="padding: 10px">
+			<!-- ko with: workout() -->
+			<input type="text" data-bind="value: name" placeholder="Name" style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 12px; box-shadow: 5px 5px 1px rgba(0,0,0,0.55); border: solid 1px black; font-weight: bold" /><br/>
 			<br />
+			<input type="text" data-bind="value: description" placeholder="Description" style="width: 100%; box-sizing: border-box; padding: 10px; font-size: 12px; box-shadow: 5px 5px 1px rgba(0,0,0,0.55); border: solid 1px black; font-weight: bold" />
 			<br />
-			<div data-bind="datepicker: date" style="width: 100%"></div>
+			<div style="padding-bottom: 5px" data-bind="sortable: { foreach: sets, options: { onEnd: onSortUpdated.bind($data), handle: '.setDetail' } }">
+				<div class="setDetail" style="margin: 10px 0px">
+					<!-- ko foreach: exercises -->
+					<div style="display: flex; flex-direction: row; border-bottom: dashed 1px black; cursor: pointer" data-bind="style: { backgroundColor: category.colorDark }, click: $parent.show.bind($parent)">
+						<div style="flex: 1; padding: 5px; font-weight: bold" data-bind="text: name" />
+						<!-- ko foreach: $parent.series -->
+						<!-- ko if: exercise === $parent -->
+						<div style="border-left: solid 1px black; padding: 5px; width: 50px; text-align: center" data-bind="
+									style: { backgroundColor: $parent.category.colorLight },
+									text: (uiAmount() !== undefined ? uiAmount() : '') + (uiAmount() !== undefined && uiReps() !== undefined ? '/' : '') + (uiReps() !== undefined ? uiReps() : '')" />
+						<!-- /ko -->
+						<!-- /ko -->
+					</div>
+					<!-- /ko -->
+					<div class="optionPanel">
+						<!-- ko template: { name: 'tmplOptionsSetSettings' } --><!-- /ko -->
+					</div>
+				</div>
+			</div>			
+			<div class="setDetail" data-bind="click: addNewSet" style="margin: 10px; margin-bottom: 0px; background: white; cursor: pointer; padding: 10px; text-align: center; font-weight: bold; font-size: 1.2em">
+				<img src="Images/add.png" style="height: 16px" /> Add Set
+			</div>
+			<!-- /ko -->
 		</div>
 	</script>
 

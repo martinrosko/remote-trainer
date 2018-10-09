@@ -54,7 +54,7 @@ var RemoteTrainer;
                 this.amount = amount;
                 this.order = ko.observable();
                 if (RemoteTrainer.DEMODATA)
-                    this.id = Math.floor(Math.random() * Math.floor(1000)).toString();
+                    this.id = Resco.createGuid();
             }
             SerieTemplate.prototype.copyTo = function (dst) {
                 dst.id = this.id;
@@ -77,12 +77,12 @@ var RemoteTrainer;
                 var _this = _super.call(this) || this;
                 if (template)
                     template.copyTo(_this);
-                _this.uiAmount = ko.observable(template ? template.amount : 0);
+                _this.uiAmount = ko.observable(template ? template.amount : undefined);
                 _this.uiAmountHasFocus = ko.observable(false);
                 _this.uiAmountHasFocus.subscribe(function (hasFocus) {
                     // FIXME: validate value
                 }, _this);
-                _this.uiReps = ko.observable(template ? template.reps : 0);
+                _this.uiReps = ko.observable(template ? template.reps : undefined);
                 _this.uiRepsHasFocus = ko.observable(false);
                 _this.uiRepsHasFocus.subscribe(function (hasFocus) {
                     // FIXME: validate value

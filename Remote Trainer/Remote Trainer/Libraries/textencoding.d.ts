@@ -1,7 +1,20 @@
 ﻿// Type definitions for text-encoding
 // Project: https://github.com/inexorabletash/text-encoding
-// Definitions by: MIZUNE Pine <https://github.com/pine613>
-// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
+// Forked from https://github.com/DefinitelyTyped/DefinitelyTyped/blob/types-2.0/text-encoding/text-encoding.d.ts
+
+declare class TextEncoder {
+	constructor(label?: string, options?: TextEncoding.TextEncoderOptions);
+	encoding: string;
+	encode(input?: string, options?: TextEncoding.TextEncodeOptions): Uint8Array;
+}
+
+declare class TextDecoder {
+	constructor(utfLabel?: string, options?: TextEncoding.TextDecoderOptions)
+	encoding: string;
+	fatal: boolean;
+	ignoreBOM: boolean;
+	decode(input?: ArrayBufferView, options?: TextEncoding.TextDecodeOptions): string;
+}
 
 declare namespace TextEncoding {
 	interface TextDecoderOptions {
@@ -17,44 +30,16 @@ declare namespace TextEncoding {
 		NONSTANDARD_allowLegacyEncoding?: boolean;
 	}
 
-	interface TextDecoder {
-		encoding: string;
-		fatal: boolean;
-		ignoreBOM: boolean;
-		decode(input?: ArrayBuffer | ArrayBufferView, options?: TextDecodeOptions): string;
-	}
-
-	interface TextEncoder {
-		encoding: string;
-		encode(input?: string, options?: TextEncodeOptions): Uint8Array;
-	}
-
 	interface TextEncodeOptions {
 		stream?: boolean;
 	}
 
-	interface TextEncoderStatic {
-		(utfLabel?: string, options?: TextEncoderOptions): TextEncoder;
-		new (utfLabel?: string, options?: TextEncoderOptions): TextEncoder;
-	}
-
-	interface TextDecoderStatic {
-		(label?: string, options?: TextDecoderOptions): TextDecoder;
-		new (label?: string, options?: TextDecoderOptions): TextDecoder;
-	}
-
 	interface TextEncodingStatic {
-		TextEncoder: TextEncoderStatic;
-		TextDecoder: TextDecoderStatic;
+		TextDecoder: typeof TextDecoder;
+		TextEncoder: typeof TextEncoder;
 	}
 }
-
-declare var TextDecoder: TextEncoding.TextDecoderStatic;
-
-declare var TextEncoder: TextEncoding.TextEncoderStatic;
 
 declare var TextEncoding: TextEncoding.TextEncodingStatic;
 
-declare module "text-encoding" {
-	export = TextEncoding;
-}
+export = TextEncoding;

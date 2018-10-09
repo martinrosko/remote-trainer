@@ -48,20 +48,20 @@
             if (RemoteTrainer.DEMODATA) {
                 var login = new Resco.Data.WebService.SimpleLoginInfo();
                 login.url = "https://rescocrm.com";
-                login.crmOrganization = "rohelbb";
+				login.crmOrganization = "roheldevbb"; //"rohelbb"; //
                 login.userName = "rohel@resco.net";
-                login.password = "1234";
+				login.password = "P@ssw0rd"; //"1234"; //
                 this.dataProvider = new Service.DataProvider(Resco.Data.WebService.Xrm.XrmService.connect(login));
 
                 await this.dataProvider.initialize();//(categories, exercises, workouts) => {
-                //    this.categories = categories;
-                //    this.exercises = exercises;
-                //    this.m_workoutTemplates = workouts;
 
-                var workout = await this.dataProvider.loadWorkout(workoutId);
-                this.workout = ko.observable(workout);
-                if (workout.status() === Data.WorkoutStatus.Running)
-                    workout.pause();
+				//this._showModifyWorkoutPage("Prsia, Biceps - B");
+				//this._showCreateWorkoutPage(new Date().toDateString());
+
+				var workout = await this.dataProvider.loadWorkout("bfa8497b-e61e-48c2-9020-bc9d4847deee");
+                this.workout = ko.observable<Data.Workout>(workout);
+                //if (workout.status() === Data.WorkoutStatus.Running)
+                //    workout.pause();
 
                 //MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
                 //    entityForm.isDirty = true;
@@ -127,23 +127,56 @@
         }
 
         private _showCreateWorkoutPage(date: string): void {
-            let dialog = new CreateWorkoutDialog(this.m_workoutTemplates, date);
-            dialog.closed.add(this, (sender, e) => {
-                if (dialog.dialogResult) {
-                    var newDate = new Date(dialog.date());
-                    newDate.setHours(8);
-                    this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name, newDate, () => {
-                        MobileCRM.UI.EntityForm.closeWithoutSaving();
-                    });
-                }
-                else {
-                    MobileCRM.UI.EntityForm.closeWithoutSaving();
-                }
-            });
+            let dialog = new ScheduleWorkoutDialog(this.dataProvider.workoutTemplates, date);
+			dialog.closed.add(this, (sender, e) => this._scheduleDialogClosed(dialog));
             Program.instance.showDialog(dialog);
-            ko.applyBindings(this);
+		}
 
-        }
+		private async _scheduleDialogClosed(dialog: ScheduleWorkoutDialog) {
+			if (dialog.dialogResult) {
+				var newDate = new Date(dialog.date());
+				newDate.setHours(8);
+				var id = await this.dataProvider.instantiateWorkout(dialog.selectedTemplate(), dialog.selectedTemplate().name(), newDate);
+				//MobileCRM.UI.EntityForm.closeWithoutSaving();
+			}
+			else {
+				//MobileCRM.UI.EntityForm.closeWithoutSaving();
+			}
+		}
+
+		private _showModifyWorkoutPage(workoutName: string): void {
+			var workoutTemplate = this.dataProvider.workoutTemplates.firstOrDefault(wt => wt.name().startsWith(workoutName));
+			if (!workoutTemplate)
+				workoutTemplate = new Data.WorkoutTemplate();
+
+			let dialog = new Data.ModifyWorkoutDialog(workoutTemplate);
+			dialog.closed.add(this, (sender, e) => {
+				if (dialog.dialogResult) {
+					workoutTemplate.name(dialog.workout().name());
+					workoutTemplate.description(dialog.workout().description());
+
+					// add new sets and series
+					workoutTemplate.setTemplates.splice(0);
+					dialog.workout().sets().forEach(set => {
+						var setTemplate = new Data.SetTemplate();
+						setTemplate.name = set.name;
+
+						set.series().forEach(serie => {
+							var serieTemplate = new Data.SerieTemplate();
+							serieTemplate.amount  = serie.uiAmount();
+							serieTemplate.reps = serie.uiReps();
+							serieTemplate.exercise = serie.exercise;
+							setTemplate.addSerie(serieTemplate);
+						}, this);
+
+						workoutTemplate.addSet(setTemplate);
+					});
+
+					this.dataProvider.updateWorkoutTemplate(workoutTemplate);
+				}
+			});
+			Program.instance.showDialog(dialog);
+		}
 
         public clearTimer(timer: GlobalTimer): boolean {
             let timerIndex = Program.instance.GlobalTimer.indexOf(timer);
@@ -190,10 +223,7 @@
             return (hours ? (hours + ":") : "") + (minutes > 9 ? "" : "0") + minutes + ":" + (seconds > 9 ? "" : "0") + seconds;
         }
 
-        public categories: Data.Category[];
-        public exercises: Data.Exercise[];
         private m_workoutTemplate: Data.WorkoutTemplate;
-        private m_workoutTemplates: Data.WorkoutTemplate[];
     }
 
     export class Dialog {
@@ -226,9 +256,10 @@
         }
     }
 
-    export class CreateWorkoutDialog extends Dialog {
+    export class ScheduleWorkoutDialog extends Dialog {
         public workoutTemplates: Data.WorkoutTemplate[];
-        public selectedTemplate: KnockoutObservable<Data.WorkoutTemplate>;
+		public selectedTemplate: KnockoutObservable<Data.WorkoutTemplate>;
+		public workout: KnockoutObservable<Data.Workout>;
         public date: KnockoutObservable<string>;
 
         public selectWorkout: Resco.Controls.SelectBox<Data.WorkoutTemplate>;
@@ -237,21 +268,31 @@
             super();
 
             this.name("Schedule Workout");
-            this.uiContentTemplateName("tmplCreateWorkoutDialog");
+			this.uiContentTemplateName("tmplScheduleWorkoutDialog");
 
-            this.workoutTemplates = workoutTemplates;
-            this.selectedTemplate = ko.observable<Data.WorkoutTemplate>(this.workoutTemplates && this.workoutTemplates.length > 0 ? this.workoutTemplates[0] : undefined);
+			this.workoutTemplates = workoutTemplates ? workoutTemplates : [];
+
+			//var newWorkoutTemplate = new Data.WorkoutTemplate();
+			//newWorkoutTemplate.name = "<New Workout>";
+			//this.workoutTemplates.splice(0, 0, newWorkoutTemplate);
+
+			this.selectedTemplate = ko.observable<Data.WorkoutTemplate>(); //this.workoutTemplates && this.workoutTemplates.length > 0 ? this.workoutTemplates[0] : undefined);
+
+			this.workout = ko.observable<Data.Workout>();
 
             this.selectWorkout = new Resco.Controls.SelectBox<Data.WorkoutTemplate>();
             this.selectWorkout.itemLabel("name")
-            this.selectWorkout.items(workoutTemplates);
-            this.selectWorkout.selecteItemChanged.add(this, this._selectWorkoutItemChanged);
+			this.selectWorkout.items(workoutTemplates);
+			this.selectWorkout.selectedItem(this.selectedTemplate());
+			this.selectWorkout.selecteItemChanged.add(this, this._selectWorkoutItemChanged);
+			this.selectWorkout.selectText("Select Workout...")
 
             this.date = ko.observable<string>(initDate);
         }
 
         private _selectWorkoutItemChanged(sender: any, args: Resco.Controls.SelectBoxItemChangedArgs<Data.WorkoutTemplate>): void {
-            this.selectedTemplate(args.item);
+			this.selectedTemplate(args.item);
+			this.workout(new Data.Workout(this.selectedTemplate()));
         }
     }
 

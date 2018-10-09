@@ -6,7 +6,8 @@
 			if (typeof TextEncoder === "undefined")
 				encoder = new TextDecoderLite(encoding);
 			else
-				encoder = new TextEncoder(encoding);
+				encoder = new TextEncoder();
+			encoder.encoding = encoding;
 			var bytes = encoder.encode(str);
 			var ret = base64js.fromByteArray(bytes);
 			if (includeBOM && !ret.startsWith('77u/'))

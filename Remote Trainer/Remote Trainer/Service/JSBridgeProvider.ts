@@ -94,8 +94,8 @@
         private _loadWorkoutTemplate(workoutEntity: /*MobileCRM.DynamicEntity*/any, onLoaded: (workout: Data.WorkoutTemplate) => void): void {
             let workout = new Data.WorkoutTemplate();
             workout.id = workoutEntity.id;
-            workout.name = workoutEntity.properties.name;
-            workout.description = workoutEntity.properties.description;
+            workout.name(workoutEntity.properties.name);
+            workout.description(workoutEntity.properties.description);
 
             // load workout sets
             this._loadSetTemplates(workout.id, sets => {
@@ -179,8 +179,8 @@
                 entity => {
                     let result = new Data.Workout();
                     result.id = entity[0].id;
-                    result.name = entity[0].properties.name;
-                    result.description = entity[0].properties.comments;
+                    result.name(entity[0].properties.name);
+                    result.description(entity[0].properties.comments);
                     result.status(parseInt(entity[0].properties.statuscode));
                     if (entity[0].properties.started_on)
                         result.startedOn(new Date(entity[0].properties.actualstart));
@@ -432,7 +432,7 @@
                 err => MobileCRM.bridge.alert("Error getting series: " + err), this);
         }
 
-        public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date, onComplete: () => void, onCompleteScope?: any): void {
+		public instantiateWorkout(workoutTemplate: Data.WorkoutTemplate, workoutName: string, scheduledOn: Date): Promise<Resco.Data.Guid> {
             let workoutEntity = new MobileCRM.DynamicEntity("workout");
             workoutEntity.properties.name = workoutName;
             workoutEntity.properties.scheduledstart = scheduledOn;
@@ -471,17 +471,19 @@
                                     serieEntity.properties.order = serieTemplate.order();
                                     serieEntity.properties.reps = serieTemplate.reps;
                                     serieEntity.save(error => {
-                                        if (error)
-                                            MobileCRM.bridge.alert("Error instantiating serie: " + error);
-                                        else if (--toCreate === 0)
-                                            onComplete.call(onCompleteScope || this);
+										if (error)
+											MobileCRM.bridge.alert("Error instantiating serie: " + error);
+										else if (--toCreate === 0) {
+											//onComplete.call(onCompleteScope || this);
+										}
                                     });                                   
                                 }, this);
                             }
                         });
                     }, this);
                 }
-            });
+			});
+			return null;
         }
     }
 }

@@ -1,12 +1,14 @@
 ﻿module RemoteTrainer.Data {
     export class WorkoutTemplate {
         public id: string;
-		public name: string;
-		public description: string;
+		public name: KnockoutObservable<string>;
+		public description: KnockoutObservable<string>;
 		public setTemplates: SetTemplate[];
 
 		constructor() {
 			this.setTemplates = [];
+			this.name = ko.observable<string>();
+			this.description = ko.observable<string>();
 		}
 
         public addSet(set: SetTemplate): void {
@@ -16,8 +18,8 @@
         }
 
         public copyTo(dst: WorkoutTemplate): void {
-            dst.name = this.name;
-            dst.description = this.description;
+            dst.name(this.name());
+            dst.description(this.description());
         }
     }
 
@@ -215,14 +217,40 @@
                 }
             });
             Program.instance.showDialog(dialog);
-        }
+		}
+
+		public onSortUpdated(event: Event, droppedSet: Set): void {
+			var sets = this.sets();
+			sets.forEach((set, index) => {
+				set.order(index + 1);
+				set.previous(index > 0 ? sets[index - 1] : null);
+				set.next(index < sets.length - 1 ? sets[index + 1] : null);
+			});
+		}
 
         private _onDurationTimer(context: any): void {
             this.duration(this.duration() + 1);
         }
 
         private m_durationTimer: GlobalTimer;
-    }
+	}
+
+
+	export class ModifyWorkoutDialog extends Dialog {
+		public selectedTemplate: Data.WorkoutTemplate;
+		public workout: KnockoutObservable<Data.Workout>;
+
+		constructor(workoutTemplate: Data.WorkoutTemplate) {
+			super();
+
+			this.name("Modify Workout");
+			this.uiContentTemplateName("tmplModifyWorkoutTemplateDialog");
+
+			this.selectedTemplate = workoutTemplate;
+			this.workout = ko.observable<Data.Workout>(new Data.Workout(this.selectedTemplate));
+		}
+	}
+
 
     export enum WorkoutStatus {
         Ready = 1,
